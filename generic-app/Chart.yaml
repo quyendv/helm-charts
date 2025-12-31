@@ -1,0 +1,17 @@
+apiVersion: v2
+name: generic-app
+description: A generic Helm chart that can be used for various applications
+type: application
+version: 1.0.0
+appVersion: '1.0.0'
+icon: https://raw.githubusercontent.com/quyendv/helm-charts/develop/images/icon.svg
+keywords:
+  - generic
+  - application
+  - microservice
+home: https://github.com/quyendv/helm-charts
+sources:
+  - https://github.com/quyendv/helm-charts
+maintainers:
+  - name: quyendv
+    email: xxx@gmail.com

@@ -1,0 +1,216 @@
+# Example values file for a microservice application
+
+# Application configuration
+replicaCount: 3
+kind: Deployment
+
+image:
+  registry: docker.io
+  repository: mycompany/my-microservice
+  tag: "1.2.3"
+  pullPolicy: IfNotPresent
+
+# Custom command and args
+command: ["/app/start.sh"]
+args: ["--config", "/config/app.yaml"]
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    http: 8080
+    metrics: 9090
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+
+# ConfigMap for application configuration
+configMaps:
+  enabled: true
+  data:
+    app.yaml: |
+      server:
+        port: 8080
+      logging:
+        level: info
+      features:
+        cache_enabled: true
+        max_connections: 100
+
+extraEnvVarsCM: "{{ include \"generic-app.fullname\" . }}"
+
+# Secrets for sensitive configuration
+secrets:
+  enabled: true
+  data:
+    api-key: "my-secret-api-key"
+    jwt-secret: "my-jwt-secret"
+    database-url: "postgresql://user:pass@db:5432/mydb"
+
+extraEnvVarsSecret: "{{ include \"generic-app.fullname\" . }}"
+
+# Additional environment variables
+extraEnvVars:
+  - name: ENVIRONMENT
+    value: "production"
+  - name: SERVICE_NAME
+    value: "my-microservice"
+  - name: LOG_FORMAT
+    value: "json"
+
+# Resource limits
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+# Health checks
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health/live
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health/ready
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /health/startup
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+# Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPU: 75
+  targetMemory: 80
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+# ServiceAccount with RBAC
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/my-service-role"
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list"]
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  allowExternal: false
+  extraIngress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: frontend
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8080
+
+# Security Context
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+# Extra volumes for read-only root filesystem
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+  - name: cache
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+  - name: cache
+    mountPath: /app/cache
+
+# Init container for database migration
+initContainers:
+  - name: db-migration
+    image: mycompany/my-microservice:1.2.3
+    command: ["/app/migrate.sh"]
+    env:
+      - name: DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: "{{ include \"generic-app.fullname\" . }}"
+            key: database-url
+
+# Sidecar for log shipping
+sidecars:
+  - name: log-shipper
+    image: fluent/fluent-bit:2.0
+    volumeMounts:
+      - name: tmp
+        mountPath: /var/log
+        readOnly: true
+
+# Pod labels and annotations
+podLabels:
+  app.kubernetes.io/component: backend
+  app.kubernetes.io/part-of: my-platform
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+
+# Anti-affinity for better distribution
+podAntiAffinityPreset: soft
+
+# Node selector
+nodeSelector:
+  kubernetes.io/os: linux
+  node.kubernetes.io/instance-type: "t3.medium"
+
+# Tolerations
+tolerations:
+  - key: "app"
+    operator: "Equal"
+    value: "backend"
+    effect: "NoSchedule"
+

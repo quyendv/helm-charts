@@ -1,0 +1,71 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.ingress.enabled }}
+
+Your application is available at:
+
+{{- if .Values.ingress.tls }}
+  https://{{ .Values.ingress.hostname }}{{ .Values.ingress.path }}
+{{- else }}
+  http://{{ .Values.ingress.hostname }}{{ .Values.ingress.path }}
+{{- end }}
+{{- else }}
+
+Your application has been deployed successfully!
+
+To access your application:
+
+{{- if contains "NodePort" .Values.service.type }}
+
+  export NODE_PORT=$(kubectl get --namespace {{ include "generic-app.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "generic-app.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ include "generic-app.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Application URL: http://$NODE_IP:$NODE_PORT"
+
+{{- else if contains "LoadBalancer" .Values.service.type }}
+
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        Watch the status with: 'kubectl get --namespace {{ include "generic-app.namespace" . }} svc -w {{ include "generic-app.fullname" . }}'
+
+  export SERVICE_IP=$(kubectl get svc --namespace {{ include "generic-app.namespace" . }} {{ include "generic-app.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo "Application URL: http://$SERVICE_IP:{{ index .Values.service.ports "http" }}"
+
+{{- else if contains "ClusterIP" .Values.service.type }}
+
+  echo "Application URL: http://127.0.0.1:8080"
+  kubectl port-forward --namespace {{ include "generic-app.namespace" . }} svc/{{ include "generic-app.fullname" . }} 8080:{{ index .Values.service.ports "http" }}
+
+{{- end }}
+{{- end }}
+
+{{- if .Values.autoscaling.enabled }}
+
+Autoscaling is enabled for this deployment.
+- Minimum replicas: {{ .Values.autoscaling.minReplicas }}
+- Maximum replicas: {{ .Values.autoscaling.maxReplicas }}
+{{- if .Values.autoscaling.targetCPU }}
+- Target CPU utilization: {{ .Values.autoscaling.targetCPU }}%
+{{- end }}
+{{- if .Values.autoscaling.targetMemory }}
+- Target Memory utilization: {{ .Values.autoscaling.targetMemory }}%
+{{- end }}
+{{- end }}
+
+{{- if .Values.persistence.enabled }}
+
+Persistent storage is enabled for this deployment.
+- Storage size: {{ .Values.persistence.size }}
+- Mount path: {{ .Values.persistence.mountPath }}
+{{- end }}
+
+Additional Information:
+- Release name: {{ .Release.Name }}
+- Namespace: {{ include "generic-app.namespace" . }}
+- Workload type: {{ .Values.kind }}
+- Service Account: {{ include "generic-app.serviceAccountName" . }}
+
+{{- include "generic-app.validateValues" . }}
+

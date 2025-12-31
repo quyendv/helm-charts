@@ -1,0 +1,22 @@
+{{- if .Values.configMaps.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "generic-app.fullname" . }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels: {{- include "generic-app.labels" . | nindent 4 }}
+  {{- if or .Values.configMaps.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.configMaps.annotations }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.configMaps.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+data:
+  {{- range $key, $value := .Values.configMaps.data }}
+  {{ $key }}: {{ include "generic-app.tplvalues.render" ( dict "value" $value "context" $ ) | quote }}
+  {{- end }}
+{{- end }}
+

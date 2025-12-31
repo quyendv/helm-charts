@@ -1,0 +1,33 @@
+{{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) (eq .Values.kind "Deployment") }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "generic-app.fullname" . }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels: {{- include "generic-app.labels" . | nindent 4 }}
+  {{- if or .Values.persistence.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.persistence.annotations }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.persistence.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  accessModes:
+  {{- range .Values.persistence.accessModes }}
+    - {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size | quote }}
+  {{ include "generic-app.storageClass" . }}
+  {{- if .Values.persistence.selector }}
+  selector: {{- include "generic-app.tplvalues.render" (dict "value" .Values.persistence.selector "context" $) | nindent 4 }}
+  {{- end -}}
+  {{- if .Values.persistence.dataSource }}
+  dataSource: {{- include "generic-app.tplvalues.render" (dict "value" .Values.persistence.dataSource "context" $) | nindent 4 }}
+  {{- end }}
+{{- end }}
+

@@ -1,0 +1,105 @@
+# Example values file for a stateful application (e.g., database)
+
+# Use StatefulSet for stateful applications
+kind: StatefulSet
+
+# Application configuration
+replicaCount: 3
+
+image:
+  registry: docker.io
+  repository: postgres
+  tag: "15-alpine"
+  pullPolicy: IfNotPresent
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    postgres: 5432
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storageClass: ""  # Use default storage class
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  mountPath: /var/lib/postgresql/data
+  subPath: pgdata
+
+# Environment variables
+extraEnvVars:
+  - name: POSTGRES_DB
+    value: "mydb"
+  - name: POSTGRES_USER
+    value: "myuser"
+  - name: PGDATA
+    value: "/var/lib/postgresql/data/pgdata"
+
+# Secrets for sensitive data
+secrets:
+  enabled: true
+  data:
+    POSTGRES_PASSWORD: "changeme123"  # This will be base64 encoded
+
+extraEnvVarsSecret: "{{ include \"generic-app.fullname\" . }}"
+
+# Resource limits
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Custom probes for PostgreSQL
+customLivenessProbe:
+  exec:
+    command:
+      - /bin/sh
+      - -c
+      - exec pg_isready -U myuser -h 127.0.0.1 -p 5432
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+customReadinessProbe:
+  exec:
+    command:
+      - /bin/sh
+      - -c
+      - exec pg_isready -U myuser -h 127.0.0.1 -p 5432
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+# Pod Disruption Budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    partition: 0
+
+# Security Context
+podSecurityContext:
+  enabled: true
+  fsGroup: 999
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 999
+  runAsNonRoot: true
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+
+# Anti-affinity to spread pods across nodes
+podAntiAffinityPreset: hard
+

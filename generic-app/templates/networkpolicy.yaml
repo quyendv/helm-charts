@@ -1,0 +1,46 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "generic-app.fullname" . }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels: {{- include "generic-app.labels" . | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels: {{- include "generic-app.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    {{- if .Values.networkPolicy.allowExternal }}
+    - {}
+    {{- else }}
+    - ports:
+      {{- range $name, $port := .Values.service.ports }}
+        - protocol: TCP
+          port: {{ $port }}
+      {{- end }}
+      from:
+        - podSelector:
+            matchLabels: {{- include "generic-app.selectorLabels" . | nindent 14 }}
+    {{- end }}
+    {{- if .Values.networkPolicy.extraIngress }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.networkPolicy.extraIngress "context" $ ) | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow dns resolution
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow outbound connections
+    - {}
+    {{- if .Values.networkPolicy.extraEgress }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.networkPolicy.extraEgress "context" $ ) | nindent 4 }}
+    {{- end }}
+{{- end }}
+

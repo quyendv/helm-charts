@@ -1,0 +1,20 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "generic-app.fullname" . }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels: {{- include "generic-app.labels" . | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "generic-app.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "generic-app.serviceAccountName" . }}
+    namespace: {{ include "generic-app.namespace" . | quote }}
+{{- end }}
+

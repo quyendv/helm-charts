@@ -1,0 +1,24 @@
+{{- if eq .Values.kind "StatefulSet" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "generic-app.fullname" . }}-headless
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels: {{- include "generic-app.labels" . | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    {{- range $name, $port := .Values.service.ports }}
+    - name: {{ $name }}
+      port: {{ $port }}
+      targetPort: {{ $name }}
+      protocol: TCP
+    {{- end }}
+  selector: {{- include "generic-app.selectorLabels" . | nindent 4 }}
+{{- end }}
+

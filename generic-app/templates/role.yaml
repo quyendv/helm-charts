@@ -1,0 +1,18 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "generic-app.fullname" . }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels: {{- include "generic-app.labels" . | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+rules:
+{{- if .Values.rbac.rules }}
+{{- include "generic-app.tplvalues.render" ( dict "value" .Values.rbac.rules "context" $) | nindent 2 }}
+{{- else }}
+  []
+{{- end }}
+{{- end }}
+
