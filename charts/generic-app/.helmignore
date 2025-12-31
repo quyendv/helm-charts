@@ -1,0 +1,80 @@
+# Patterns to ignore when building packages.
+# This supports shell glob matching, relative path matching, and
+# negation (prefixed with !). Only one pattern per line.
+
+# VCS files
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+.jenkins/
+Jenkinsfile
+azure-pipelines.yml
+
+# IDE and editor files
+.idea/
+.vscode/
+.project
+.settings/
+*.swp
+*.swo
+*~
+*.tmproj
+.classpath
+.metadata
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+*.orig
+*.rej
+
+# Test files
+test/
+tests/
+*_test.yaml
+*_test.yml
+*.test.yaml
+*.test.yml
+
+# Documentation and examples
+examples/
+docs/
+# README.md  # Keep README.md for ArtifactHub display
+
+# Build artifacts
+*.tgz
+*.tar.gz
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Helm specific
+requirements.lock
+Chart.lock
+charts/*.tgz
+

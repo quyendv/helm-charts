@@ -24,17 +24,42 @@ A comprehensive, production-ready Helm chart that can be used as a template for 
 - Kubernetes 1.19+
 - Helm 3.2.0+
 
-## Installing the Chart
+## Quick Start
 
-To install the chart with the release name `my-app`:
+### Add Helm Repository
 
 ```bash
-helm install my-app ./generic-app
+helm repo add quyendv https://quyendv.github.io/helm-charts
+helm repo update
 ```
 
-To install with custom values:
+### Install Chart
 
 ```bash
+# Install with default values
+helm install my-app quyendv/generic-app
+
+# Install with custom values
+helm install my-app quyendv/generic-app -f my-values.yaml
+
+# Install specific version
+helm install my-app quyendv/generic-app --version 1.0.0
+
+# Install with inline values
+helm install my-app quyendv/generic-app \
+  --set image.repository=nginx \
+  --set image.tag=1.25.3 \
+  --set service.type=LoadBalancer
+```
+
+### Install from Source
+
+```bash
+# Clone repository
+git clone https://github.com/quyendv/helm-charts.git
+cd helm-charts
+
+# Install chart
 helm install my-app ./generic-app -f my-values.yaml
 ```
 
@@ -362,6 +387,112 @@ generic-app/
 │   ├── networkpolicy.yaml  # NetworkPolicy
 │   └── NOTES.txt           # Installation notes
 └── README.md               # This file
+```
+
+## Upgrading
+
+```bash
+# Upgrade to latest version
+helm upgrade my-app quyendv/generic-app
+
+# Upgrade with new values
+helm upgrade my-app quyendv/generic-app -f my-values.yaml
+
+# Rollback to previous version
+helm rollback my-app
+```
+
+## Troubleshooting
+
+### Check Release Status
+
+```bash
+helm list
+helm status my-app
+helm get values my-app
+```
+
+### Debug Installation
+
+```bash
+# Dry-run to preview manifests
+helm install my-app quyendv/generic-app --dry-run --debug
+
+# Template locally
+helm template my-app ./generic-app -f my-values.yaml
+
+# Check pod logs
+kubectl logs -l app.kubernetes.io/name=generic-app
+```
+
+### Common Issues
+
+**Issue**: Image pull errors
+
+- Check `image.repository`, `image.tag`, and `image.pullSecrets`
+- Verify registry credentials
+
+**Issue**: Pods not starting
+
+- Check resource limits: `kubectl describe pod <pod-name>`
+- Verify health probes configuration
+
+**Issue**: Service not accessible
+
+- Verify service type and port configuration
+- Check ingress controller if using Ingress
+
+## CI/CD Integration
+
+### ArgoCD
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+spec:
+  source:
+    repoURL: https://quyendv.github.io/helm-charts
+    chart: generic-app
+    targetRevision: 1.0.0
+    helm:
+      values: |
+        image:
+          repository: myapp
+          tag: "1.0.0"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+```
+
+### FluxCD
+
+```yaml
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: quyendv
+spec:
+  interval: 10m
+  url: https://quyendv.github.io/helm-charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: my-app
+spec:
+  chart:
+    spec:
+      chart: generic-app
+      version: 1.0.0
+      sourceRef:
+        kind: HelmRepository
+        name: quyendv
+  values:
+    image:
+      repository: myapp
+      tag: '1.0.0'
 ```
 
 ## References
