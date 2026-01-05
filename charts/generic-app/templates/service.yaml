@@ -1,3 +1,4 @@
+{{- if .Values.service.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -49,4 +50,5 @@ spec:
     {{- include "generic-app.tplvalues.render" (dict "value" .Values.service.extraPorts "context" $) | nindent 4 }}
     {{- end }}
   selector: {{- include "generic-app.selectorLabels" . | nindent 4 }}
+{{- end }}
 

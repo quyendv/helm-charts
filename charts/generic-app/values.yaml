@@ -122,6 +122,9 @@ podSecurityContext:
 ## Service configuration
 ##
 service:
+  ## @param service.enabled Enable service creation
+  ##
+  enabled: true
   ## @param service.type Service type
   ##
   type: ClusterIP
