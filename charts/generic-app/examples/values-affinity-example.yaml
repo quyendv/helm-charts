@@ -1,0 +1,136 @@
+# Example demonstrating Pod Affinity and Anti-Affinity configurations
+# This example shows different use cases for controlling pod scheduling
+
+# ==============================================================================
+# Example 1: Default (No Affinity Rules)
+# Let Kubernetes scheduler decide where to place pods
+# ==============================================================================
+replicaCount: 3
+# podAffinityPreset: ""          # No pod affinity (default)
+# podAntiAffinityPreset: ""      # No pod anti-affinity (default)
+
+# Result: Pods can be placed anywhere, no restrictions
+# Best for: Development, testing, non-critical workloads
+
+---
+# ==============================================================================
+# Example 2: High Availability (Production)
+# Spread pods across different nodes to avoid single point of failure
+# ==============================================================================
+# replicaCount: 3
+# podAntiAffinityPreset: "soft"  # Prefer different nodes, but not required
+# podAffinityPreset: ""          # No pod affinity
+
+# Result: Pods will preferably be scheduled on different nodes
+# Best for: Production web apps, APIs, microservices
+
+---
+# ==============================================================================
+# Example 3: Strict High Availability (Critical Services)
+# Force pods to run on different nodes (zero-downtime requirement)
+# ==============================================================================
+# replicaCount: 3
+# podAntiAffinityPreset: "hard"  # MUST be on different nodes
+# podAffinityPreset: ""
+
+# Result: Each pod MUST be on a different node. If not enough nodes, pod stays pending
+# Best for: Databases, stateful apps, mission-critical services
+
+---
+# ==============================================================================
+# Example 4: Co-located Workloads (Low Latency)
+# Run pods together on the same node for fast communication
+# ==============================================================================
+# replicaCount: 3
+# podAffinityPreset: "soft"      # Prefer same node
+# podAntiAffinityPreset: ""      # No anti-affinity
+
+# Result: Pods will preferably be scheduled on the same node
+# Best for: Cache clusters, data processing pipelines, ML inference
+
+---
+# ==============================================================================
+# Example 5: Mixed Strategy (Balanced)
+# Balance between co-location and spreading
+# ==============================================================================
+# replicaCount: 5
+# podAffinityPreset: "soft"      # Prefer same node
+# podAntiAffinityPreset: "soft"  # But also prefer spreading
+
+# Result: Kubernetes will balance between co-location and spreading
+# Best for: Complex workloads with both performance and HA needs
+
+---
+# ==============================================================================
+# Example 6: Custom Affinity (Advanced)
+# Override all presets with custom affinity rules
+# ==============================================================================
+# replicaCount: 3
+# # podAffinityPreset and podAntiAffinityPreset are ignored when affinity is set
+# affinity:
+#   podAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       - labelSelector:
+#           matchExpressions:
+#             - key: app.kubernetes.io/component
+#               operator: In
+#               values:
+#                 - cache
+#         topologyKey: kubernetes.io/hostname
+#   podAntiAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#       - weight: 100
+#         podAffinityTerm:
+#           labelSelector:
+#             matchExpressions:
+#               - key: app.kubernetes.io/name
+#                 operator: In
+#                 values:
+#                   - generic-app
+#           topologyKey: topology.kubernetes.io/zone
+
+---
+# ==============================================================================
+# Example 7: Zone-based Spreading (Geographic HA)
+# Combine with node affinity for specific zones/regions
+# ==============================================================================
+# replicaCount: 3
+# podAntiAffinityPreset: "soft"  # Spread across nodes
+#
+# nodeAffinityPreset:
+#   type: "soft"
+#   key: "topology.kubernetes.io/zone"
+#   values:
+#     - us-east-1a
+#     - us-east-1b
+#     - us-east-1c
+
+# Result: Pods spread across both nodes and zones for maximum redundancy
+# Best for: Multi-region deployments, disaster recovery
+
+---
+# ==============================================================================
+# Common Use Cases Summary:
+# ==============================================================================
+#
+# 1. Development/Testing (Default): Both ""
+#    - No restrictions, let Kubernetes decide freely
+#    - Fastest deployment, no scheduling constraints
+#
+# 2. Production Web Apps: podAntiAffinityPreset: "soft"
+#    - Spread replicas across nodes for high availability
+#    - Tolerant of scheduling failures
+#
+# 3. Critical Services (Databases): podAntiAffinityPreset: "hard"
+#    - Strict separation to avoid single point of failure
+#    - Requires enough nodes for all replicas
+#
+# 4. Cache/Storage Clusters: podAffinityPreset: "soft"
+#    - Co-locate for low-latency access to shared resources
+#    - Reduce network overhead
+#
+# 5. ML Training Jobs: podAffinityPreset: "hard"
+#    - Keep all training pods together on same GPU node
+#    - Maximize resource sharing and performance
+#
+# ==============================================================================

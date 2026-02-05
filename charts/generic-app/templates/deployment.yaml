@@ -39,8 +39,8 @@ spec:
       affinity: {{- toYaml .Values.affinity | nindent 8 }}
       {{- else }}
       affinity:
-        podAffinity: {{- include "generic-app.affinities.pods" . | nindent 10 }}
-        podAntiAffinity: {{- include "generic-app.affinities.pods" . | nindent 10 }}
+        podAffinity: {{- include "generic-app.affinities.podAffinity" . | nindent 10 }}
+        podAntiAffinity: {{- include "generic-app.affinities.podAntiAffinity" . | nindent 10 }}
         nodeAffinity: {{- include "generic-app.affinities.nodes" . | nindent 10 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
