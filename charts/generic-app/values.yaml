@@ -114,25 +114,33 @@ extraEnvVarsSecrets: []
 
 ## @section Security parameters
 
-## @param containerSecurityContext.enabled Enabled containers' Security Context
-## @param containerSecurityContext.runAsUser Set containers' Security Context runAsUser
-## @param containerSecurityContext.runAsNonRoot Set containers' Security Context runAsNonRoot
-## @param containerSecurityContext.readOnlyRootFilesystem Set containers' Security Context readOnlyRootFilesystem
-## @param containerSecurityContext.allowPrivilegeEscalation Set containers' Security Context allowPrivilegeEscalation
+## Container Security Context
+## Defines privilege and access control settings for containers
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+##
+## @param containerSecurityContext.enabled Enable container security context
+## @param containerSecurityContext.runAsUser User ID to run the container (non-root user)
+## @param containerSecurityContext.runAsNonRoot Force container to run as non-root user
+## @param containerSecurityContext.readOnlyRootFilesystem Mount root filesystem as read-only
+## @param containerSecurityContext.allowPrivilegeEscalation Prevent privilege escalation
 ##
 containerSecurityContext:
-  enabled: true
-  runAsUser: 1001
-  runAsNonRoot: true
-  readOnlyRootFilesystem: false
-  allowPrivilegeEscalation: false
+  enabled: false
+  # runAsUser: 1001
+  # runAsNonRoot: true
+  # readOnlyRootFilesystem: false
+  # allowPrivilegeEscalation: false
 
-## @param podSecurityContext.enabled Enabled pods' Security Context
-## @param podSecurityContext.fsGroup Set pod's Security Context fsGroup
+## Pod Security Context
+## Defines pod-level security settings (applies to all containers in pod)
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+##
+## @param podSecurityContext.enabled Enable pod security context
+## @param podSecurityContext.fsGroup Group ID for filesystem ownership
 ##
 podSecurityContext:
-  enabled: true
-  fsGroup: 1001
+  enabled: false
+  # fsGroup: 1001
 
 ## @section Service parameters
 

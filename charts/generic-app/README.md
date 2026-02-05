@@ -105,6 +105,16 @@ The following table lists the configurable parameters and their default values.
 | `image.pullPolicy`  | Image pull policy                         | `IfNotPresent` |
 | `image.pullSecrets` | Image pull secrets                        | `[]`           |
 
+### Environment Variables Parameters
+
+| Parameter                    | Description                                  | Default |
+| ---------------------------- | -------------------------------------------- | ------- |
+| `extraEnvVars`               | Array of extra environment variables         | `[]`    |
+| `extraEnvVarsConfigMaps`     | List of ConfigMaps to load as env vars       | `[]`    |
+| `extraEnvVarsSecrets`        | List of Secrets to load as env vars          | `[]`    |
+
+See [Environment Variables Guide](./docs/ENVIRONMENT-VARIABLES.md) for detailed examples.
+
 ### Service Parameters
 
 | Parameter             | Description             | Default      |
@@ -143,6 +153,17 @@ The following table lists the configurable parameters and their default values.
 | `autoscaling.maxReplicas`  | Maximum number of replicas           | `11`    |
 | `autoscaling.targetCPU`    | Target CPU utilization percentage    | `80`    |
 | `autoscaling.targetMemory` | Target Memory utilization percentage | `80`    |
+
+### Pod Scheduling Parameters
+
+| Parameter                 | Description                                     | Default |
+| ------------------------- | ----------------------------------------------- | ------- |
+| `podAffinityPreset`       | Pod affinity preset (soft/hard)                 | `""`    |
+| `podAntiAffinityPreset`   | Pod anti-affinity preset (soft/hard)            | `""`    |
+| `nodeAffinityPreset.type` | Node affinity preset type (soft/hard)           | `""`    |
+| `affinity`                | Custom affinity rules (overrides all presets)   | `{}`    |
+| `nodeSelector`            | Node labels for pod assignment                  | `{}`    |
+| `tolerations`             | Tolerations for pod assignment                  | `[]`    |
 
 ### RBAC Parameters
 
@@ -255,16 +276,30 @@ secrets:
     db-password: 'mysecretpassword'
     api-key: 'myapikey'
 
-extraEnvVarsCM: '{{ include "generic-app.fullname" . }}'
-extraEnvVarsSecret: '{{ include "generic-app.fullname" . }}'
+# Load environment variables from chart-created ConfigMap and Secret
+extraEnvVarsConfigMaps:
+  - '{{ include "generic-app.fullname" . }}'
+
+extraEnvVarsSecrets:
+  - '{{ include "generic-app.fullname" . }}'
+
+# Or load from external ConfigMaps/Secrets
+# extraEnvVarsConfigMaps:
+#   - app-config
+#   - shared-config
+# extraEnvVarsSecrets:
+#   - db-credentials
+#   - api-keys
 
 livenessProbe:
+  enabled: true
   httpGet:
     path: /health
     port: http
   initialDelaySeconds: 30
 
 readinessProbe:
+  enabled: true
   httpGet:
     path: /ready
     port: http
@@ -310,7 +345,36 @@ rbac:
       verbs: ['get', 'list']
 ```
 
-### Example 5: With Init Container and Sidecars
+### Example 5: High Availability with Pod Anti-Affinity
+
+```yaml
+# values-ha.yaml
+replicaCount: 3
+
+image:
+  repository: myapp
+  tag: '1.0.0'
+
+# Spread pods across nodes for high availability
+podAntiAffinityPreset: soft
+
+# Or strict HA (requires enough nodes)
+# podAntiAffinityPreset: hard
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+```
+
+### Example 6: With Init Container and Sidecars
 
 ```yaml
 # values-advanced.yaml
@@ -346,12 +410,14 @@ extraVolumeMounts:
 
 1. **Use specific image tags** instead of `latest` for production deployments
 2. **Enable resource limits** to prevent resource exhaustion
-3. **Configure health probes** for better availability
+3. **Configure health probes** for better availability and faster recovery
 4. **Use Secrets** for sensitive data instead of ConfigMaps
 5. **Enable HPA** for applications with variable load
 6. **Set PodDisruptionBudget** for high-availability applications
-7. **Use anti-affinity rules** to spread pods across nodes
-8. **Enable NetworkPolicy** for enhanced security
+7. **Use pod anti-affinity** to spread pods across nodes (`podAntiAffinityPreset: soft`)
+8. **Enable NetworkPolicy** for enhanced security in production
+9. **Use multiple ConfigMaps/Secrets** for better separation of concerns
+10. **Separate data and application lifecycle** (external PVCs when possible)
 
 ## Customization
 
@@ -494,6 +560,12 @@ spec:
       repository: myapp
       tag: '1.0.0'
 ```
+
+## Additional Documentation
+
+- [Environment Variables Guide](./docs/ENVIRONMENT-VARIABLES.md) - Comprehensive guide for managing environment variables with multiple ConfigMaps/Secrets
+- [Pod Affinity Examples](./examples/values-affinity-example.yaml) - Examples for pod affinity and anti-affinity configurations
+- [Multiple EnvFrom Examples](./examples/values-multiple-envfrom-example.yaml) - Examples for loading env vars from multiple sources
 
 ## References
 
