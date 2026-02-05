@@ -39,19 +39,23 @@ A comprehensive, production-ready Helm chart for deploying various applications 
 
 **Features:**
 
-- Support for Deployment and StatefulSet
-- Ingress with TLS
-- ConfigMaps and Secrets
-- Persistent Volume Claims
-- HPA, PDB, Network Policy
-- RBAC support
+- Support for **Deployment** and **StatefulSet**
+- **Ingress** with TLS and cert-manager support
+- **Multiple ConfigMaps/Secrets** for environment variables
+- **Persistent Volume Claims** with flexible mounting
+- **Pod Affinity/Anti-Affinity** for HA deployments
+- **HPA, PDB, Network Policy**
+- **RBAC** with ServiceAccount and custom roles
+- **Health Probes** (Liveness, Readiness, Startup)
+- **Init Containers** and **Sidecars** support
+- **Security Context** configuration
 
 **Quick Install:**
 
 ```bash
 helm install my-app quyendv/generic-app \
   --set image.repository=nginx \
-  --set image.tag=latest \
+  --set image.tag=1.25.3 \
   --set service.type=LoadBalancer
 ```
 
@@ -68,16 +72,20 @@ helm install my-app quyendv/generic-app \
 
 ```bash
 # Lint charts
-helm lint generic-app
+helm lint charts/generic-app
 
 # Template rendering
-helm template my-app generic-app -f generic-app/values.yaml
+helm template my-app charts/generic-app -f charts/generic-app/values.yaml
 
 # Dry-run installation
-helm install my-app generic-app --dry-run --debug
+helm install my-app charts/generic-app --dry-run --debug
 
 # Install locally
-helm install my-app ./generic-app
+helm install my-app ./charts/generic-app
+
+# Test with examples
+helm template my-app charts/generic-app \
+  -f charts/generic-app/examples/values-microservice-example.yaml
 ```
 
 ### Chart Structure
@@ -86,13 +94,27 @@ helm install my-app ./generic-app
 helm-charts/
 ├── .github/
 │   └── workflows/
-│       └── release.yml      # GitHub Actions for chart releases
-├── generic-app/             # Chart directory
-│   ├── Chart.yaml
-│   ├── values.yaml
-│   ├── templates/
-│   └── README.md
-└── README.md               # This file
+│       └── release.yml           # GitHub Actions for chart releases
+├── charts/
+│   └── generic-app/              # Chart directory
+│       ├── Chart.yaml            # Chart metadata
+│       ├── values.yaml           # Default values
+│       ├── README.md             # Chart documentation
+│       ├── CHANGELOG.md          # Version history
+│       ├── MIGRATION.md          # Migration guide
+│       ├── templates/            # Kubernetes manifests
+│       │   ├── _helpers.tpl
+│       │   ├── deployment.yaml
+│       │   ├── statefulset.yaml
+│       │   ├── service.yaml
+│       │   ├── ingress.yaml
+│       │   └── ...
+│       ├── docs/                 # Additional documentation
+│       └── examples/             # Example values files
+│           ├── values-microservice-example.yaml
+│           ├── values-affinity-example.yaml
+│           └── ...
+└── README.md                     # This file
 ```
 
 ## Contributing
