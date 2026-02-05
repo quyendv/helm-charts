@@ -85,15 +85,15 @@ spec:
             {{- if .Values.extraEnvVars }}
             {{- include "generic-app.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
-          {{- if or .Values.extraEnvVarsCM .Values.extraEnvVarsSecret }}
+          {{- if or .Values.extraEnvVarsConfigMaps .Values.extraEnvVarsSecrets }}
           envFrom:
-            {{- if .Values.extraEnvVarsCM }}
+            {{- range .Values.extraEnvVarsConfigMaps }}
             - configMapRef:
-                name: {{ include "generic-app.tplvalues.render" (dict "value" .Values.extraEnvVarsCM "context" $) }}
+                name: {{ . }}
             {{- end }}
-            {{- if .Values.extraEnvVarsSecret }}
+            {{- range .Values.extraEnvVarsSecrets }}
             - secretRef:
-                name: {{ include "generic-app.tplvalues.render" (dict "value" .Values.extraEnvVarsSecret "context" $) }}
+                name: {{ . }}
             {{- end }}
           {{- end }}
           ports:

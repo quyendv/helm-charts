@@ -86,14 +86,31 @@ args: []
 ## extraEnvVars:
 ##   - name: FOO
 ##     value: "bar"
+##   - name: DATABASE_HOST
+##     valueFrom:
+##       configMapKeyRef:
+##         name: app-config
+##         key: db_host
 ##
 extraEnvVars: []
-## @param extraEnvVarsCM Name of existing ConfigMap containing extra env vars
+
+## @param extraEnvVarsConfigMaps List of existing ConfigMaps to load as environment variables
+## All keys from these ConfigMaps will be exposed as environment variables
+## e.g:
+## extraEnvVarsConfigMaps:
+##   - app-config
+##   - shared-config
 ##
-extraEnvVarsCM: ""
-## @param extraEnvVarsSecret Name of existing Secret containing extra env vars
+extraEnvVarsConfigMaps: []
+
+## @param extraEnvVarsSecrets List of existing Secrets to load as environment variables
+## All keys from these Secrets will be exposed as environment variables
+## e.g:
+## extraEnvVarsSecrets:
+##   - app-secret
+##   - db-credentials
 ##
-extraEnvVarsSecret: ""
+extraEnvVarsSecrets: []
 
 ## @section Security parameters
 
