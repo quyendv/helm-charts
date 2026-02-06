@@ -1,0 +1,39 @@
+{{- if .Values.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: {{ .Values.certManager.issuerType }}
+metadata:
+  name: {{ .Values.certManager.issuerName | default (include "generic-app.fullname" .) }}
+  {{- if eq .Values.certManager.issuerType "Issuer" }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  {{- end }}
+  labels: {{- include "generic-app.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.certManager.acme.enabled }}
+  acme:
+    server: {{ .Values.certManager.acme.server }}
+    email: {{ required "certManager.acme.email is required when ACME is enabled" .Values.certManager.acme.email }}
+    privateKeySecretRef:
+      name: {{ .Values.certManager.acme.privateKeySecretRef | default (printf "%s-acme-account-key" (include "generic-app.fullname" .)) }}
+    {{- if .Values.certManager.acme.solvers }}
+    solvers:
+      {{- toYaml .Values.certManager.acme.solvers | nindent 6 }}
+    {{- end }}
+  {{- else if .Values.certManager.ca.enabled }}
+  ca:
+    secretName: {{ required "certManager.ca.secretName is required when CA issuer is enabled" .Values.certManager.ca.secretName }}
+  {{- else if .Values.certManager.vault.enabled }}
+  vault:
+    server: {{ required "certManager.vault.server is required when Vault issuer is enabled" .Values.certManager.vault.server }}
+    path: {{ required "certManager.vault.path is required when Vault issuer is enabled" .Values.certManager.vault.path }}
+    {{- if .Values.certManager.vault.caBundle }}
+    caBundle: {{ .Values.certManager.vault.caBundle }}
+    {{- end }}
+    auth:
+      tokenSecretRef:
+        name: {{ required "certManager.vault.auth.tokenSecretRef.name is required when Vault issuer is enabled" .Values.certManager.vault.auth.tokenSecretRef.name }}
+        key: {{ .Values.certManager.vault.auth.tokenSecretRef.key | default "token" }}
+  {{- end }}
+{{- end }}

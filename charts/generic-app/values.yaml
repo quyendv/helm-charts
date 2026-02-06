@@ -208,6 +208,83 @@ service:
   ##
   sessionAffinityConfig: {}
 
+## @section Cert-Manager parameters
+
+## Cert-Manager Issuer configuration
+## ref: https://cert-manager.io/docs/configuration/
+##
+certManager:
+  ## @param certManager.enabled Enable cert-manager issuer creation
+  ##
+  enabled: false
+  ## @param certManager.issuerType Type of issuer to create (Issuer or ClusterIssuer)
+  ##
+  issuerType: ClusterIssuer
+  ## @param certManager.issuerName Name of the issuer (if empty, will use release name)
+  ##
+  issuerName: ""
+  ## ACME configuration for Let's Encrypt
+  ##
+  acme:
+    ## @param certManager.acme.enabled Enable ACME issuer (Let's Encrypt)
+    ##
+    enabled: true
+    ## @param certManager.acme.server ACME server URL
+    ## Production: https://acme-v02.api.letsencrypt.org/directory
+    ## Staging: https://acme-staging-v02.api.letsencrypt.org/directory
+    ##
+    server: https://acme-v02.api.letsencrypt.org/directory
+    ## @param certManager.acme.email Email address for ACME registration
+    ##
+    email: ""
+    ## @param certManager.acme.privateKeySecretRef Secret name to store ACME account private key
+    ##
+    privateKeySecretRef: ""
+    ## ACME challenge solvers
+    ##
+    solvers:
+      ## @param certManager.acme.solvers HTTP01 solver configuration
+      ## e.g:
+      ## - http01:
+      ##     ingress:
+      ##       class: nginx
+      ##
+      - http01:
+          ingress:
+            class: nginx
+  ## CA Issuer configuration
+  ##
+  ca:
+    ## @param certManager.ca.enabled Enable CA issuer
+    ##
+    enabled: false
+    ## @param certManager.ca.secretName Secret name containing CA certificate and key
+    ##
+    secretName: ""
+  ## Vault Issuer configuration
+  ##
+  vault:
+    ## @param certManager.vault.enabled Enable Vault issuer
+    ##
+    enabled: false
+    ## @param certManager.vault.server Vault server URL
+    ##
+    server: ""
+    ## @param certManager.vault.path Vault PKI path
+    ##
+    path: ""
+    ## @param certManager.vault.caBundle CA bundle for Vault server
+    ##
+    caBundle: ""
+    ## Vault authentication
+    ##
+    auth:
+      ## @param certManager.vault.auth.tokenSecretRef Token secret reference
+      ##
+      tokenSecretRef:
+        name: ""
+        key: token
+
 ## @section Ingress parameters
 
 ## Ingress configuration

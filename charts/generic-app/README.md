@@ -7,6 +7,7 @@ A comprehensive, production-ready Helm chart that can be used as a template for 
 - ✅ Support for both **Deployment** and **StatefulSet**
 - ✅ Flexible **Service** configuration (ClusterIP, NodePort, LoadBalancer)
 - ✅ **Ingress** with TLS support
+- ✅ **Automatic SSL/TLS certificate** management with cert-manager (Let's Encrypt, CA, Vault)
 - ✅ **ConfigMaps** and **Secrets** management
 - ✅ **Persistent Volume Claims** (PVC)
 - ✅ **ServiceAccount** and **RBAC** configuration
@@ -107,13 +108,11 @@ The following table lists the configurable parameters and their default values.
 
 ### Environment Variables Parameters
 
-| Parameter                    | Description                                  | Default |
-| ---------------------------- | -------------------------------------------- | ------- |
-| `extraEnvVars`               | Array of extra environment variables         | `[]`    |
-| `extraEnvVarsConfigMaps`     | List of ConfigMaps to load as env vars       | `[]`    |
-| `extraEnvVarsSecrets`        | List of Secrets to load as env vars          | `[]`    |
-
-See [Environment Variables Guide](./docs/ENVIRONMENT-VARIABLES.md) for detailed examples.
+| Parameter                | Description                            | Default |
+| ------------------------ | -------------------------------------- | ------- |
+| `extraEnvVars`           | Array of extra environment variables   | `[]`    |
+| `extraEnvVarsConfigMaps` | List of ConfigMaps to load as env vars | `[]`    |
+| `extraEnvVarsSecrets`    | List of Secrets to load as env vars    | `[]`    |
 
 ### Service Parameters
 
@@ -122,6 +121,22 @@ See [Environment Variables Guide](./docs/ENVIRONMENT-VARIABLES.md) for detailed 
 | `service.type`        | Kubernetes Service type | `ClusterIP`  |
 | `service.ports`       | Service ports           | `{http: 80}` |
 | `service.annotations` | Service annotations     | `{}`         |
+
+### Cert-Manager Parameters
+
+| Parameter                   | Description                           | Default         |
+| --------------------------- | ------------------------------------- | --------------- |
+| `certManager.enabled`       | Enable cert-manager issuer creation   | `false`         |
+| `certManager.issuerType`    | Type of issuer (Issuer/ClusterIssuer) | `ClusterIssuer` |
+| `certManager.issuerName`    | Name of the issuer                    | `""`            |
+| `certManager.acme.enabled`  | Enable ACME issuer (Let's Encrypt)    | `true`          |
+| `certManager.acme.server`   | ACME server URL                       | Production      |
+| `certManager.acme.email`    | Email for ACME registration           | `""`            |
+| `certManager.acme.solvers`  | ACME challenge solvers                | HTTP01 nginx    |
+| `certManager.ca.enabled`    | Enable CA issuer                      | `false`         |
+| `certManager.ca.secretName` | Secret containing CA certificate      | `""`            |
+| `certManager.vault.enabled` | Enable Vault issuer                   | `false`         |
+| `certManager.vault.server`  | Vault server URL                      | `""`            |
 
 ### Ingress Parameters
 
@@ -156,14 +171,14 @@ See [Environment Variables Guide](./docs/ENVIRONMENT-VARIABLES.md) for detailed 
 
 ### Pod Scheduling Parameters
 
-| Parameter                 | Description                                     | Default |
-| ------------------------- | ----------------------------------------------- | ------- |
-| `podAffinityPreset`       | Pod affinity preset (soft/hard)                 | `""`    |
-| `podAntiAffinityPreset`   | Pod anti-affinity preset (soft/hard)            | `""`    |
-| `nodeAffinityPreset.type` | Node affinity preset type (soft/hard)           | `""`    |
-| `affinity`                | Custom affinity rules (overrides all presets)   | `{}`    |
-| `nodeSelector`            | Node labels for pod assignment                  | `{}`    |
-| `tolerations`             | Tolerations for pod assignment                  | `[]`    |
+| Parameter                 | Description                                   | Default |
+| ------------------------- | --------------------------------------------- | ------- |
+| `podAffinityPreset`       | Pod affinity preset (soft/hard)               | `""`    |
+| `podAntiAffinityPreset`   | Pod anti-affinity preset (soft/hard)          | `""`    |
+| `nodeAffinityPreset.type` | Node affinity preset type (soft/hard)         | `""`    |
+| `affinity`                | Custom affinity rules (overrides all presets) | `{}`    |
+| `nodeSelector`            | Node labels for pod assignment                | `{}`    |
+| `tolerations`             | Tolerations for pod assignment                | `[]`    |
 
 ### RBAC Parameters
 
@@ -176,7 +191,7 @@ See [Environment Variables Guide](./docs/ENVIRONMENT-VARIABLES.md) for detailed 
 
 ## Usage Examples
 
-### Example 1: Simple Web Application
+### Example 1: Simple Web Application with SSL
 
 ```yaml
 # values-webapp.yaml
@@ -184,13 +199,24 @@ image:
   repository: myapp
   tag: '1.0.0'
 
+# Automatic SSL certificate from Let's Encrypt
+certManager:
+  enabled: true
+  issuerType: ClusterIssuer
+  issuerName: letsencrypt-prod
+  acme:
+    enabled: true
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+
 service:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     http: 8080
 
 ingress:
   enabled: true
+  ingressClassName: nginx
   hostname: myapp.example.com
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
@@ -442,6 +468,7 @@ generic-app/
 │   ├── service.yaml        # Service resource
 │   ├── service-headless.yaml  # Headless service for StatefulSet
 │   ├── ingress.yaml        # Ingress resource
+│   ├── issuer.yaml         # Cert-manager Issuer/ClusterIssuer
 │   ├── configmap.yaml      # ConfigMap resource
 │   ├── secret.yaml         # Secret resource
 │   ├── pvc.yaml            # PersistentVolumeClaim
@@ -563,7 +590,6 @@ spec:
 
 ## Additional Documentation
 
-- [Environment Variables Guide](./docs/ENVIRONMENT-VARIABLES.md) - Comprehensive guide for managing environment variables with multiple ConfigMaps/Secrets
 - [Pod Affinity Examples](./examples/values-affinity-example.yaml) - Examples for pod affinity and anti-affinity configurations
 - [Multiple EnvFrom Examples](./examples/values-multiple-envfrom-example.yaml) - Examples for loading env vars from multiple sources
 
