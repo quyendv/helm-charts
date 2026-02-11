@@ -1,0 +1,195 @@
+# Example values for configuring rolling update strategy
+# This example demonstrates how to configure zero-downtime deployments
+# and controlled StatefulSet updates
+
+## Example 1: Zero-Downtime Deployment
+## This configuration ensures that at least one pod is always available during updates
+## Suitable for web applications and APIs that need high availability
+
+# replicaCount: 3
+# 
+# image:
+#   repository: nginx
+#   tag: '1.25.3'
+#   pullPolicy: IfNotPresent
+# 
+# updateStrategy:
+#   type: RollingUpdate
+#   rollingUpdate:
+#     # Create 1 extra pod during update (total 4 pods during update)
+#     maxSurge: 1
+#     # Never allow any pods to be unavailable (zero-downtime)
+#     maxUnavailable: 0
+# 
+# service:
+#   enabled: true
+#   type: ClusterIP
+#   ports:
+#     http: 80
+# 
+# readinessProbe:
+#   enabled: true
+#   httpGet:
+#     path: /
+#     port: http
+#   initialDelaySeconds: 10
+#   periodSeconds: 5
+#   failureThreshold: 3
+# 
+# resources:
+#   limits:
+#     cpu: 500m
+#     memory: 512Mi
+#   requests:
+#     cpu: 250m
+#     memory: 256Mi
+
+## Example 2: Fast Rolling Update
+## This configuration prioritizes update speed over availability
+## Suitable for development environments or batch processing applications
+
+# replicaCount: 5
+# 
+# image:
+#   repository: myapp
+#   tag: '2.0.0'
+# 
+# updateStrategy:
+#   type: RollingUpdate
+#   rollingUpdate:
+#     # Create 2 extra pods during update for faster rollout
+#     maxSurge: 2
+#     # Allow 2 pods to be unavailable (faster but less available)
+#     maxUnavailable: 2
+# 
+# service:
+#   enabled: true
+#   type: ClusterIP
+#   ports:
+#     http: 8080
+
+## Example 3: Percentage-Based Rolling Update
+## This configuration uses percentages instead of absolute numbers
+## Automatically scales with replica count changes
+
+# replicaCount: 10
+# 
+# image:
+#   repository: myapp
+#   tag: '1.0.0'
+# 
+# updateStrategy:
+#   type: RollingUpdate
+#   rollingUpdate:
+#     # Allow 25% extra pods during update
+#     maxSurge: 25%
+#     # Allow 10% of pods to be unavailable
+#     maxUnavailable: 10%
+
+## Example 4: Recreate Strategy
+## This strategy terminates all old pods before creating new ones
+## Useful when the application cannot run multiple versions simultaneously
+
+# replicaCount: 3
+# 
+# image:
+#   repository: myapp
+#   tag: '1.0.0'
+# 
+# updateStrategy:
+#   type: Recreate
+#   # Note: rollingUpdate settings are ignored when using Recreate
+
+## Example 5: StatefulSet Controlled Rollout (Canary-style)
+## This configuration allows testing updates on a subset of pods first
+## Perfect for databases or stateful applications where you want to be cautious
+
+# kind: StatefulSet
+# 
+# replicaCount: 5
+# 
+# image:
+#   repository: postgres
+#   tag: '15'
+# 
+# updateStrategy:
+#   type: RollingUpdate
+#   rollingUpdate:
+#     # Only update pods with ordinal >= 3 (postgres-3 and postgres-4)
+#     # postgres-0, postgres-1, postgres-2 will keep running the old version
+#     partition: 3
+#     # Allow 1 pod to be unavailable during update
+#     maxUnavailable: 1
+# 
+# persistence:
+#   enabled: true
+#   size: 20Gi
+#   mountPath: /var/lib/postgresql/data
+# 
+# service:
+#   enabled: true
+#   type: ClusterIP
+#   ports:
+#     postgres: 5432
+# 
+# ## After verifying postgres-3 and postgres-4 work correctly, 
+# ## update partition to 0 to roll out to all pods:
+# ## helm upgrade mydb ./generic-app --set updateStrategy.rollingUpdate.partition=0
+
+## Example 6: StatefulSet with OnDelete Strategy
+## This strategy only updates pods when they are manually deleted
+## Gives maximum control over when updates happen
+
+# kind: StatefulSet
+# 
+# replicaCount: 3
+# 
+# image:
+#   repository: mongodb
+#   tag: '6.0'
+# 
+# updateStrategy:
+#   type: OnDelete
+#   # Note: rollingUpdate settings are ignored when using OnDelete
+# 
+# persistence:
+#   enabled: true
+#   size: 50Gi
+#   mountPath: /data/db
+# 
+# ## To update: manually delete pods one by one
+# ## kubectl delete pod mongodb-0
+# ## Wait for mongodb-0 to be recreated and healthy
+# ## kubectl delete pod mongodb-1
+# ## And so on...
+
+## Example 7: Conservative Rolling Update
+## Minimizes risk by updating only one pod at a time
+## Best for critical production applications
+
+# replicaCount: 4
+# 
+# image:
+#   repository: myapp
+#   tag: '1.0.0'
+# 
+# updateStrategy:
+#   type: RollingUpdate
+#   rollingUpdate:
+#     # Don't create any extra pods
+#     maxSurge: 0
+#     # Only update 1 pod at a time
+#     maxUnavailable: 1
+# 
+# podDisruptionBudget:
+#   enabled: true
+#   minAvailable: 3  # Always keep at least 3 pods running
+# 
+# readinessProbe:
+#   enabled: true
+#   httpGet:
+#     path: /health
+#     port: http
+#   initialDelaySeconds: 30
+#   periodSeconds: 10
+#   failureThreshold: 3

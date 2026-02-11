@@ -718,6 +718,9 @@ nodeSelector: {}
 tolerations: []
 
 ## @param updateStrategy.type statefulset/deployment strategy type
+## @param updateStrategy.rollingUpdate.maxSurge Maximum number of pods that can be created over desired replicas (Deployment only)
+## @param updateStrategy.rollingUpdate.maxUnavailable Maximum number of pods that can be unavailable during update
+## @param updateStrategy.rollingUpdate.partition Ordinal at which StatefulSet should be partitioned (StatefulSet only)
 ## ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
 ## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
 ##
@@ -726,6 +729,21 @@ updateStrategy:
   ## Can be set to RollingUpdate or Recreate (for Deployment)
   ##
   type: RollingUpdate
+  ## Rolling update configuration parameters
+  ## Only applies when type is RollingUpdate
+  ##
+  # rollingUpdate:
+  #   ## For Deployment: Maximum number of pods that can be created over the desired number
+  #   ## Can be an absolute number (e.g., 5) or a percentage of desired pods (e.g., 10%)
+  #   ## Default is 25%
+  #   maxSurge: 1
+  #   ## For Deployment and StatefulSet: Maximum number of pods that can be unavailable during update
+  #   ## Can be an absolute number (e.g., 5) or a percentage of desired pods (e.g., 10%)
+  #   ## Default is 25% for Deployment, 1 for StatefulSet
+  #   maxUnavailable: 0
+  #   ## For StatefulSet only: Ordinal at which the StatefulSet should be partitioned
+  #   ## Default is 0, which means all pods will be updated
+  #   # partition: 0
 
 ## @param priorityClassName pods' priorityClassName
 ##

@@ -1,351 +1,357 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Helm Charts Repository - quyendv</title>
-    <meta name="description" content="Production-ready Helm charts for Kubernetes deployments">
+    <meta name="description" content="Production-ready Helm charts for Kubernetes deployments" />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
 
+      .container {
+        max-width: 900px;
+        width: 100%;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 48px;
+        animation: fadeIn 0.6s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        color: #667eea;
+        margin-bottom: 12px;
+        font-weight: 700;
+      }
+
+      .header p {
+        font-size: 1.2rem;
+        color: #666;
+      }
+
+      .badge {
+        display: inline-block;
+        margin-top: 12px;
+      }
+
+      .section {
+        margin-bottom: 32px;
+      }
+
+      .section h2 {
+        font-size: 1.5rem;
+        color: #333;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #667eea;
+      }
+
+      .code-block {
+        background: #f5f5f5;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 16px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        overflow-x: auto;
+        margin: 12px 0;
+      }
+
+      .code-block code {
+        color: #d63384;
+      }
+
+      .chart-card {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+
+      .chart-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .chart-card h3 {
+        color: #667eea;
+        margin-bottom: 8px;
+        font-size: 1.3rem;
+      }
+
+      .chart-card p {
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      .chart-card .version {
+        display: inline-block;
+        background: #667eea;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin: 16px 0;
+      }
+
+      .feature {
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        border-left: 3px solid #667eea;
+        font-size: 0.9rem;
+      }
+
+      .buttons {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 32px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 12px 28px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+        font-size: 1rem;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+      }
+
+      .btn-secondary:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 40px;
+        padding-top: 24px;
+        border-top: 1px solid #e0e0e0;
+        color: #666;
+        font-size: 0.9rem;
+      }
+
+      .footer a {
+        color: #667eea;
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 768px) {
         .container {
-            max-width: 900px;
-            width: 100%;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 48px;
-            animation: fadeIn 0.6s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
+          padding: 32px 24px;
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            color: #667eea;
-            margin-bottom: 12px;
-            font-weight: 700;
-        }
-
-        .header p {
-            font-size: 1.2rem;
-            color: #666;
-        }
-
-        .badge {
-            display: inline-block;
-            margin-top: 12px;
-        }
-
-        .section {
-            margin-bottom: 32px;
-        }
-
-        .section h2 {
-            font-size: 1.5rem;
-            color: #333;
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #667eea;
-        }
-
-        .code-block {
-            background: #f5f5f5;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 16px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            overflow-x: auto;
-            margin: 12px 0;
-        }
-
-        .code-block code {
-            color: #d63384;
-        }
-
-        .chart-card {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 16px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .chart-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .chart-card h3 {
-            color: #667eea;
-            margin-bottom: 8px;
-            font-size: 1.3rem;
-        }
-
-        .chart-card p {
-            color: #666;
-            margin-bottom: 8px;
-        }
-
-        .chart-card .version {
-            display: inline-block;
-            background: #667eea;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 500;
+          font-size: 2rem;
         }
 
         .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin: 16px 0;
-        }
-
-        .feature {
-            background: white;
-            padding: 12px;
-            border-radius: 6px;
-            border-left: 3px solid #667eea;
-            font-size: 0.9rem;
+          grid-template-columns: 1fr;
         }
 
         .buttons {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 32px;
+          flex-direction: column;
         }
 
         .btn {
-            display: inline-flex;
-            align-items: center;
-            padding: 12px 28px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s;
-            font-size: 1rem;
+          width: 100%;
+          justify-content: center;
         }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
-        }
-
-        .btn-secondary:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 24px;
-            border-top: 1px solid #e0e0e0;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 32px 24px;
-            }
-
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .features {
-                grid-template-columns: 1fr;
-            }
-
-            .buttons {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>🚀 Helm Charts Repository</h1>
-            <p>Production-ready Helm charts for Kubernetes deployments</p>
-            <a href="https://github.com/quyendv/helm-charts/actions/workflows/release.yml" class="badge">
-                <img src="https://github.com/quyendv/helm-charts/actions/workflows/release.yml/badge.svg" alt="Release Charts">
-            </a>
-        </div>
+      <div class="header">
+        <h1>🚀 Helm Charts Repository</h1>
+        <p>Production-ready Helm charts for Kubernetes deployments</p>
+        <a href="https://github.com/quyendv/helm-charts/actions/workflows/release.yml" class="badge">
+          <img
+            src="https://github.com/quyendv/helm-charts/actions/workflows/release.yml/badge.svg"
+            alt="Release Charts"
+          />
+        </a>
+      </div>
 
-        <div class="section">
-            <h2>📦 Quick Start</h2>
-            <p>Add the Helm repository and start using the charts:</p>
-            <div class="code-block">
-                <code>helm repo add quyendv https://quyendv.github.io/helm-charts</code><br>
-                <code>helm repo update</code><br>
-                <code>helm search repo quyendv</code>
-            </div>
+      <div class="section">
+        <h2>📦 Quick Start</h2>
+        <p>Add the Helm repository and start using the charts:</p>
+        <div class="code-block">
+          <code>helm repo add quyendv https://quyendv.github.io/helm-charts</code><br />
+          <code>helm repo update</code><br />
+          <code>helm search repo quyendv</code>
         </div>
+      </div>
 
-        <div class="section">
-            <h2>📚 Available Charts</h2>
-            
-            <div class="chart-card">
-                <h3>generic-app</h3>
-                <p>A comprehensive, production-ready Helm chart for deploying various applications to Kubernetes.</p>
-                <span class="version" id="chart-version">Loading...</span>
-                
-                <div class="features">
-                    <div class="feature">✓ Deployment & StatefulSet</div>
-                    <div class="feature">✓ Ingress with TLS</div>
-                    <div class="feature">✓ ConfigMaps & Secrets</div>
-                    <div class="feature">✓ PVC Support</div>
-                    <div class="feature">✓ HPA & PDB</div>
-                    <div class="feature">✓ Network Policy</div>
-                    <div class="feature">✓ RBAC Support</div>
-                    <div class="feature">✓ Health Probes</div>
-                </div>
+      <div class="section">
+        <h2>📚 Available Charts</h2>
 
-                <div class="code-block" style="margin-top: 16px;">
-                    <code># Add the repository</code><br>
-                    <code>helm repo add quyendv https://quyendv.github.io/helm-charts</code><br>
-                    <code>helm repo update</code><br>
-                    <code></code><br>
-                    <code># Install the chart</code><br>
-                    <code>helm install my-app quyendv/generic-app \</code><br>
-                    <code>&nbsp;&nbsp;--set image.repository=nginx \</code><br>
-                    <code>&nbsp;&nbsp;--set image.tag=1.25.3</code>
-                </div>
-            </div>
+        <div class="chart-card">
+          <h3>generic-app</h3>
+          <p>A comprehensive, production-ready Helm chart for deploying various applications to Kubernetes.</p>
+          <span class="version" id="chart-version">Loading...</span>
+
+          <div class="features">
+            <div class="feature">✓ Deployment & StatefulSet</div>
+            <div class="feature">✓ Ingress with TLS</div>
+            <div class="feature">✓ ConfigMaps & Secrets</div>
+            <div class="feature">✓ PVC Support</div>
+            <div class="feature">✓ HPA & PDB</div>
+            <div class="feature">✓ Network Policy</div>
+            <div class="feature">✓ RBAC Support</div>
+            <div class="feature">✓ Health Probes</div>
+          </div>
+
+          <div class="code-block" style="margin-top: 16px">
+            <code># Add the repository</code><br />
+            <code>helm repo add quyendv https://quyendv.github.io/helm-charts</code><br />
+            <code>helm repo update</code><br />
+            <code></code><br />
+            <code># Install the chart</code><br />
+            <code>helm install my-app quyendv/generic-app \</code><br />
+            <code>&nbsp;&nbsp;--set image.repository=nginx \</code><br />
+            <code>&nbsp;&nbsp;--set image.tag=1.25.3</code>
+          </div>
         </div>
+      </div>
 
-        <div class="buttons">
-            <a href="https://github.com/quyendv/helm-charts" class="btn btn-primary" target="_blank">
-                📖 View Documentation
-            </a>
-            <a href="https://github.com/quyendv/helm-charts/issues" class="btn btn-secondary" target="_blank">
-                💬 Report Issues
-            </a>
-        </div>
+      <div class="buttons">
+        <a href="https://github.com/quyendv/helm-charts" class="btn btn-primary" target="_blank">
+          📖 View Documentation
+        </a>
+        <a href="https://github.com/quyendv/helm-charts/issues" class="btn btn-secondary" target="_blank">
+          💬 Report Issues
+        </a>
+      </div>
 
-        <div class="footer">
-            <p>
-                Maintained by <a href="https://github.com/quyendv" target="_blank">@quyendv</a>
-                | Licensed under <a href="https://github.com/quyendv/helm-charts/blob/main/LICENSE" target="_blank">MIT License</a>
-            </p>
-            <p style="margin-top: 8px;">
-                <a href="https://github.com/quyendv/helm-charts" target="_blank">GitHub Repository</a>
-            </p>
-        </div>
+      <div class="footer">
+        <p>
+          Maintained by <a href="https://github.com/quyendv" target="_blank">@quyendv</a> | Licensed under
+          <a href="https://github.com/quyendv/helm-charts/blob/main/LICENSE" target="_blank">MIT License</a>
+        </p>
+        <p style="margin-top: 8px">
+          <a href="https://github.com/quyendv/helm-charts" target="_blank">GitHub Repository</a>
+        </p>
+      </div>
     </div>
 
     <script>
-        // Fetch chart version from index.yaml
-        async function fetchChartVersion() {
-            try {
-                const response = await fetch('index.yaml');
-                const text = await response.text();
-                
-                // Parse YAML to find generic-app version
-                const lines = text.split('\n');
-                let inGenericApp = false;
-                let version = null;
-                
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    
-                    // Check if we found generic-app
-                    if (line.includes('name: generic-app')) {
-                        inGenericApp = true;
-                    }
-                    
-                    // Get the version when we're in generic-app section
-                    if (inGenericApp && line.trim().startsWith('version:')) {
-                        version = line.split(':')[1].trim();
-                        break;
-                    }
-                    
-                    // Reset if we hit another chart
-                    if (inGenericApp && line.includes('name:') && !line.includes('generic-app')) {
-                        inGenericApp = false;
-                    }
-                }
-                
-                if (version) {
-                    document.getElementById('chart-version').textContent = 'v' + version;
-                } else {
-                    document.getElementById('chart-version').textContent = 'v1.4.0';
-                }
-            } catch (error) {
-                console.error('Failed to fetch chart version:', error);
-                // Fallback to static version
-                document.getElementById('chart-version').textContent = 'v1.4.0';
+      // Fetch chart version from index.yaml
+      async function fetchChartVersion() {
+        const defaultVersion = 'v1.4.0';
+        try {
+          const response = await fetch('index.yaml');
+          const text = await response.text();
+
+          // Parse YAML to find generic-app version
+          const lines = text.split('\n');
+          let inGenericApp = false;
+          let version = null;
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            // Check if we found generic-app
+            if (line.includes('name: generic-app')) {
+              inGenericApp = true;
             }
+
+            // Get the version when we're in generic-app section
+            if (inGenericApp && line.trim().startsWith('version:')) {
+              version = line.split(':')[1].trim();
+              break;
+            }
+
+            // Reset if we hit another chart
+            if (inGenericApp && line.includes('name:') && !line.includes('generic-app')) {
+              inGenericApp = false;
+            }
+          }
+
+          if (version) {
+            document.getElementById('chart-version').textContent = 'v' + version;
+          } else {
+            document.getElementById('chart-version').textContent = defaultVersion;
+          }
+        } catch (error) {
+          console.error('Failed to fetch chart version:', error);
+          // Fallback to static version
+          document.getElementById('chart-version').textContent = defaultVersion;
         }
-        
-        // Load version on page load
-        fetchChartVersion();
+      }
+
+      // Load version on page load
+      fetchChartVersion();
     </script>
-</body>
+  </body>
 </html>

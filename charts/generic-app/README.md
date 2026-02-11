@@ -169,6 +169,15 @@ The following table lists the configurable parameters and their default values.
 | `autoscaling.targetCPU`    | Target CPU utilization percentage    | `80`    |
 | `autoscaling.targetMemory` | Target Memory utilization percentage | `80`    |
 
+### Update Strategy Parameters
+
+| Parameter                               | Description                                                       | Default         |
+| --------------------------------------- | ----------------------------------------------------------------- | --------------- |
+| `updateStrategy.type`                   | Update strategy type (RollingUpdate/Recreate/OnDelete)            | `RollingUpdate` |
+| `updateStrategy.rollingUpdate.maxSurge` | Max pods that can be created over desired replicas (Deployment)   | `nil`           |
+| `updateStrategy.rollingUpdate.maxUnavailable` | Max pods that can be unavailable during update              | `nil`           |
+| `updateStrategy.rollingUpdate.partition` | Ordinal at which StatefulSet should be partitioned (StatefulSet) | `nil`           |
+
 ### Pod Scheduling Parameters
 
 | Parameter                 | Description                                   | Default |
@@ -400,7 +409,66 @@ podDisruptionBudget:
   minAvailable: 2
 ```
 
-### Example 6: With Init Container and Sidecars
+### Example 6: Custom Update Strategy for Zero-Downtime Deployment
+
+```yaml
+# values-rolling-update.yaml
+replicaCount: 3
+
+image:
+  repository: myapp
+  tag: '1.0.0'
+
+# Zero-downtime rolling update strategy
+# Ensures at least one pod is always available
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1          # Allow 1 extra pod during update (total 4 pods max)
+    maxUnavailable: 0    # Never allow any pods to be unavailable
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+```
+
+For StatefulSet with controlled rollout:
+
+```yaml
+# values-stateful-controlled.yaml
+kind: StatefulSet
+
+replicaCount: 5
+
+image:
+  repository: mydb
+  tag: '1.0.0'
+
+# Canary-style update: only update pods with ordinal >= partition
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    partition: 3        # Only update pods mydb-3 and mydb-4
+    maxUnavailable: 1   # Allow 1 pod to be unavailable during update
+
+persistence:
+  enabled: true
+  size: 10Gi
+```
+
+### Example 7: With Init Container and Sidecars
 
 ```yaml
 # values-advanced.yaml
@@ -591,7 +659,10 @@ spec:
 ## Additional Documentation
 
 - [Pod Affinity Examples](./examples/values-affinity-example.yaml) - Examples for pod affinity and anti-affinity configurations
-- [Multiple EnvFrom Examples](./examples/values-multiple-envfrom-example.yaml) - Examples for loading env vars from multiple sources
+- [Rolling Update Strategy Examples](./examples/values-rolling-update-example.yaml) - Examples for configuring deployment update strategies
+- [Web Application Example](./examples/values-webapp-example.yaml) - Complete example for deploying a web application
+- [StatefulSet Example](./examples/values-stateful-example.yaml) - Complete example for deploying a stateful application
+- [Microservice Example](./examples/values-microservice-example.yaml) - Complete example for deploying a microservice
 
 ## References
 
