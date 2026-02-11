@@ -7,6 +7,7 @@ on:
       - develop
     paths:
       - 'charts/**'
+  workflow_dispatch:
 
 jobs:
   release:
@@ -36,3 +37,17 @@ jobs:
         with:
           charts_dir: charts
           skip_existing: true
+
+      - name: Deploy index.html to gh-pages
+        run: |
+          git fetch origin gh-pages
+          git checkout gh-pages
+          git checkout ${{ github.ref_name }} -- index.html
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Update landing page from ${{ github.ref_name }}"
+            git push origin gh-pages
+          else
+            echo "No changes to index.html"
+          fi
+          git checkout ${{ github.ref_name }}
