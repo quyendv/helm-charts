@@ -774,8 +774,36 @@ runtimeClassName: ""
 ##
 hostAliases: []
 
-## @param extraDeploy Array of extra objects to deploy with the release
-## NOTE: This feature is not implemented yet. Will be added in future versions.
+## @param extraDeploy Array of extra objects to deploy with the release (supports templating)
+## This allows you to deploy additional Kubernetes resources alongside your application
+## All objects will be rendered as templates, so you can use Helm template functions and variables
+## e.g:
+## extraDeploy:
+##   - apiVersion: v1
+##     kind: ConfigMap
+##     metadata:
+##       name: {{ include "generic-app.fullname" . }}-extra-config
+##       namespace: {{ include "generic-app.namespace" . }}
+##       labels: {{- include "generic-app.labels" . | nindent 8 }}
+##     data:
+##       extra.conf: |
+##         server {
+##           listen 8080;
+##         }
+##   - apiVersion: batch/v1
+##     kind: Job
+##     metadata:
+##       name: {{ include "generic-app.fullname" . }}-migration
+##       namespace: {{ include "generic-app.namespace" . }}
+##       labels: {{- include "generic-app.labels" . | nindent 8 }}
+##     spec:
+##       template:
+##         spec:
+##           containers:
+##           - name: migration
+##             image: {{ include "generic-app.image" . }}
+##             command: ["migrate", "up"]
+##           restartPolicy: OnFailure
 ##
-# extraDeploy: []
+extraDeploy: []
 

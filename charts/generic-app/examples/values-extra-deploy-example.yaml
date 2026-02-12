@@ -1,0 +1,416 @@
+# ============================================================================
+# Extra Deploy Examples
+# ============================================================================
+# This file demonstrates how to use the extraDeploy feature to deploy
+# additional Kubernetes resources alongside your application.
+# All objects support full Helm templating with access to chart values and helpers.
+
+# Basic application configuration
+image:
+  repository: myapp
+  tag: '1.0.0'
+
+service:
+  type: ClusterIP
+  ports:
+    http: 8080
+
+# ============================================================================
+# Example 1: Nginx Configuration ConfigMap
+# ============================================================================
+# Deploy a custom nginx configuration file
+extraDeploy:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-nginx-config'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+      annotations:
+        description: "Custom nginx configuration for {{ .Release.Name }}"
+    data:
+      nginx.conf: |
+        user nginx;
+        worker_processes auto;
+        error_log /var/log/nginx/error.log warn;
+        pid /var/run/nginx.pid;
+        
+        events {
+          worker_connections 1024;
+        }
+        
+        http {
+          include /etc/nginx/mime.types;
+          default_type application/octet-stream;
+          
+          log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+          
+          access_log /var/log/nginx/access.log main;
+          
+          sendfile on;
+          tcp_nopush on;
+          keepalive_timeout 65;
+          gzip on;
+          
+          server {
+            listen 80;
+            server_name {{ .Values.ingress.hostname | default "localhost" }};
+            
+            location / {
+              proxy_pass http://{{ include "generic-app.fullname" . }}:{{ .Values.service.ports.http }};
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            
+            location /health {
+              access_log off;
+              return 200 "healthy\n";
+            }
+          }
+        }
+
+# ============================================================================
+# Example 2: Database Migration Job (Pre-Install Hook)
+# ============================================================================
+# Runs database migrations before the application starts
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-db-migration'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+      annotations:
+        "helm.sh/hook": pre-install,pre-upgrade
+        "helm.sh/hook-weight": "-5"
+        "helm.sh/hook-delete-policy": before-hook-creation
+    spec:
+      backoffLimit: 3
+      ttlSecondsAfterFinished: 300
+      template:
+        metadata:
+          name: '{{ include "generic-app.fullname" . }}-db-migration'
+          labels: {{- include "generic-app.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: migration
+        spec:
+          restartPolicy: OnFailure
+          {{- if .Values.serviceAccount.create }}
+          serviceAccountName: {{ include "generic-app.serviceAccountName" . }}
+          {{- end }}
+          containers:
+          - name: migration
+            image: '{{ include "generic-app.image" . }}'
+            command: ["npm", "run", "migrate:up"]
+            env:
+            - name: DATABASE_URL
+              value: "postgresql://postgres:5432/mydb"
+            - name: NODE_ENV
+              value: "production"
+            {{- if .Values.extraEnvVars }}
+            {{- include "generic-app.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+            resources:
+              limits:
+                cpu: 500m
+                memory: 512Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+
+# ============================================================================
+# Example 3: Backup CronJob
+# ============================================================================
+# Scheduled daily backup job
+  - apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-backup'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+        app.kubernetes.io/component: backup
+    spec:
+      # Run daily at 2 AM
+      schedule: "0 2 * * *"
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      concurrencyPolicy: Forbid
+      jobTemplate:
+        spec:
+          template:
+            metadata:
+              labels: {{- include "generic-app.selectorLabels" . | nindent 16 }}
+                app.kubernetes.io/component: backup
+            spec:
+              restartPolicy: OnFailure
+              containers:
+              - name: backup
+                image: postgres:15-alpine
+                command:
+                - /bin/sh
+                - -c
+                - |
+                  BACKUP_FILE="/backups/backup-$(date +%Y%m%d-%H%M%S).sql"
+                  echo "Starting backup to $BACKUP_FILE"
+                  pg_dump -h postgres-service -U postgres -d mydb > "$BACKUP_FILE"
+                  gzip "$BACKUP_FILE"
+                  echo "Backup completed: $BACKUP_FILE.gz"
+                  
+                  # Keep only last 7 days of backups
+                  find /backups -name "backup-*.sql.gz" -mtime +7 -delete
+                  echo "Old backups cleaned up"
+                env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password
+                volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 512Mi
+                  requests:
+                    cpu: 100m
+                    memory: 128Mi
+              volumes:
+              - name: backup-storage
+                persistentVolumeClaim:
+                  claimName: backup-pvc
+
+# ============================================================================
+# Example 4: Prometheus ServiceMonitor
+# ============================================================================
+# For monitoring with Prometheus Operator
+  - apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+        prometheus: kube-prometheus
+    spec:
+      selector:
+        matchLabels: {{- include "generic-app.selectorLabels" . | nindent 10 }}
+      endpoints:
+      - port: http
+        path: /metrics
+        interval: 30s
+        scrapeTimeout: 10s
+        honorLabels: true
+        relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+
+# ============================================================================
+# Example 5: Application Secret with Dynamic Values
+# ============================================================================
+# Create a secret with values from chart configuration
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-app-secret'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+    type: Opaque
+    stringData:
+      app-name: '{{ include "generic-app.fullname" . }}'
+      app-version: '{{ .Chart.AppVersion }}'
+      release-name: '{{ .Release.Name }}'
+      # Example: API key (should be provided via values)
+      api-key: '{{ .Values.apiKey | default "default-api-key" }}'
+      # Example: Connection string
+      database-url: 'postgresql://{{ .Values.database.host | default "localhost" }}:5432/{{ .Values.database.name | default "mydb" }}'
+
+# ============================================================================
+# Example 6: Init Database Job (One-time setup)
+# ============================================================================
+# Creates initial database schema (runs only on install)
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-init-db'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+        app.kubernetes.io/component: init
+      annotations:
+        "helm.sh/hook": post-install
+        "helm.sh/hook-weight": "-3"
+        "helm.sh/hook-delete-policy": hook-succeeded
+    spec:
+      backoffLimit: 5
+      template:
+        metadata:
+          name: '{{ include "generic-app.fullname" . }}-init-db'
+          labels: {{- include "generic-app.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: init
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: init-db
+            image: postgres:15-alpine
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Creating initial database schema..."
+              psql -h postgres-service -U postgres -d mydb <<EOF
+              CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              );
+              
+              CREATE TABLE IF NOT EXISTS sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                token VARCHAR(255) NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              );
+              
+              CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+              CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+              
+              -- Insert default admin user if not exists
+              INSERT INTO users (username, email)
+              VALUES ('admin', 'admin@example.com')
+              ON CONFLICT (username) DO NOTHING;
+              
+              echo "Database initialization completed successfully!"
+              EOF
+            env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 50m
+                memory: 64Mi
+
+# ============================================================================
+# Example 7: PersistentVolumeClaim for Backups
+# ============================================================================
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: backup-pvc
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+        app.kubernetes.io/component: storage
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      {{- if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: 10Gi
+
+# ============================================================================
+# Example 8: PodMonitor for Custom Metrics
+# ============================================================================
+# Alternative to ServiceMonitor, scrapes pods directly
+  - apiVersion: monitoring.coreos.com/v1
+    kind: PodMonitor
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-pods'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+    spec:
+      selector:
+        matchLabels: {{- include "generic-app.selectorLabels" . | nindent 10 }}
+      podMetricsEndpoints:
+      - port: http
+        path: /actuator/prometheus
+        interval: 15s
+
+# ============================================================================
+# Example 9: NetworkPolicy for Backup Job
+# ============================================================================
+# Allow backup job to access database
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-backup-netpol'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+    spec:
+      podSelector:
+        matchLabels:
+          {{- include "generic-app.selectorLabels" . | nindent 10 }}
+          app.kubernetes.io/component: backup
+      policyTypes:
+      - Egress
+      egress:
+      # Allow DNS resolution
+      - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        ports:
+        - protocol: UDP
+          port: 53
+      # Allow access to PostgreSQL
+      - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+        ports:
+        - protocol: TCP
+          port: 5432
+
+# ============================================================================
+# Example 10: Sealed Secret (for use with Bitnami Sealed Secrets)
+# ============================================================================
+# Encrypted secret that can be safely stored in Git
+  - apiVersion: bitnami.com/v1alpha1
+    kind: SealedSecret
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-sealed-secret'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+    spec:
+      encryptedData:
+        # This is an example encrypted value - replace with your own
+        # Use: kubeseal --raw --from-file=secret.txt --namespace=default --name=my-secret
+        database-password: AgBqxT5... # encrypted value here
+      template:
+        metadata:
+          name: '{{ include "generic-app.fullname" . }}-sealed-secret'
+          namespace: '{{ include "generic-app.namespace" . }}'
+          labels: {{- include "generic-app.labels" . | nindent 12 }}
+
+# ============================================================================
+# Additional Configuration Examples
+# ============================================================================
+
+# You can also use extraDeploy with conditional rendering:
+# {{- if .Values.monitoring.enabled }}
+#   - apiVersion: monitoring.coreos.com/v1
+#     kind: ServiceMonitor
+#     ...
+# {{- end }}
+
+# Or loop through custom resources:
+# {{- range .Values.customConfigMaps }}
+#   - apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ .name }}
+#     data: {{ .data | toYaml | nindent 6 }}
+# {{- end }}

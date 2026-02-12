@@ -5,6 +5,30 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-02-12
+
+### Added
+
+- **extraDeploy** feature: Deploy additional Kubernetes resources alongside your application
+  - Full Helm templating support for all extra objects
+  - Can deploy any Kubernetes resource type (ConfigMap, Secret, Job, CronJob, ServiceMonitor, etc.)
+  - Automatically inherits namespace, labels, and annotations from chart
+  - New template file `templates/extra-deploy.yaml` to handle extra deployments
+- New example file `examples/values-extra-deploy-example.yaml` with practical use cases:
+  - Nginx configuration ConfigMap
+  - Database migration Job
+  - Backup CronJob
+  - Prometheus ServiceMonitor
+  - Custom application Secret
+  - Init database Job
+- Enhanced documentation in README.md with extraDeploy parameters and examples
+
+### Changed
+
+- Updated `values.yaml` with comprehensive extraDeploy documentation and examples
+- Updated README.md with new "Extra Deploy Parameters" section
+- Updated README.md with Example 8 demonstrating extraDeploy usage
+
 ## [1.5.0] - 2026-02-11
 
 ### Added

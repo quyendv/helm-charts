@@ -1,0 +1,7 @@
+{{/*
+Extra objects to deploy (list of objects)
+*/}}
+{{- range .Values.extraDeploy }}
+---
+{{ include "generic-app.tplvalues.render" (dict "value" . "context" $) }}
+{{- end }}

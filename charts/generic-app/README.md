@@ -19,6 +19,7 @@ A comprehensive, production-ready Helm chart that can be used as a template for 
 - ✅ **Affinity** and **Anti-Affinity** rules
 - ✅ **Init containers** and **Sidecars**
 - ✅ **Extra volumes** and **volume mounts**
+- ✅ **Extra Deploy** - Deploy additional Kubernetes resources with full templating support
 
 ## Prerequisites
 
@@ -197,6 +198,12 @@ The following table lists the configurable parameters and their default values.
 | `serviceAccount.name`   | ServiceAccount name   | `""`    |
 | `rbac.create`           | Create RBAC resources | `false` |
 | `rbac.rules`            | Custom RBAC rules     | `[]`    |
+
+### Extra Deploy Parameters
+
+| Parameter      | Description                                                           | Default |
+| -------------- | --------------------------------------------------------------------- | ------- |
+| `extraDeploy`  | Array of extra Kubernetes objects to deploy (supports full templating) | `[]`    |
 
 ## Usage Examples
 
@@ -500,6 +507,95 @@ extraVolumeMounts:
     mountPath: /var/log
 ```
 
+### Example 8: Deploy Extra Resources (Jobs, CronJobs, etc.)
+
+```yaml
+# values-extra-deploy.yaml
+image:
+  repository: myapp
+  tag: '1.0.0'
+
+# Deploy additional Kubernetes resources
+extraDeploy:
+  # Database migration job (runs before app starts)
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-migration'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+      annotations:
+        "helm.sh/hook": pre-install,pre-upgrade
+        "helm.sh/hook-weight": "-5"
+        "helm.sh/hook-delete-policy": before-hook-creation
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          name: '{{ include "generic-app.fullname" . }}-migration'
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: migration
+            image: '{{ include "generic-app.image" . }}'
+            command: ["npm", "run", "migrate"]
+            env:
+            - name: DATABASE_URL
+              value: "postgres://db:5432/mydb"
+
+  # Daily backup cronjob
+  - apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-backup'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+    spec:
+      schedule: "0 2 * * *"  # Daily at 2 AM
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      jobTemplate:
+        spec:
+          template:
+            spec:
+              restartPolicy: OnFailure
+              containers:
+              - name: backup
+                image: postgres:15
+                command:
+                - /bin/sh
+                - -c
+                - pg_dump -h db -U postgres mydb > /backups/backup-$(date +%Y%m%d).sql
+                volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+              volumes:
+              - name: backup-storage
+                persistentVolumeClaim:
+                  claimName: backup-pvc
+
+  # Prometheus ServiceMonitor for monitoring
+  - apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}'
+      namespace: '{{ include "generic-app.namespace" . }}'
+      labels: {{- include "generic-app.labels" . | nindent 8 }}
+    spec:
+      selector:
+        matchLabels: {{- include "generic-app.selectorLabels" . | nindent 10 }}
+      endpoints:
+      - port: http
+        path: /metrics
+        interval: 30s
+```
+
+Install:
+
+```bash
+helm install myapp ./generic-app -f values-extra-deploy.yaml
+```
+
 ## Best Practices
 
 1. **Use specific image tags** instead of `latest` for production deployments
@@ -546,6 +642,7 @@ generic-app/
 │   ├── hpa.yaml            # HorizontalPodAutoscaler
 │   ├── pdb.yaml            # PodDisruptionBudget
 │   ├── networkpolicy.yaml  # NetworkPolicy
+│   ├── extra-deploy.yaml   # Extra Kubernetes objects
 │   └── NOTES.txt           # Installation notes
 └── README.md               # This file
 ```
@@ -660,6 +757,7 @@ spec:
 
 - [Pod Affinity Examples](./examples/values-affinity-example.yaml) - Examples for pod affinity and anti-affinity configurations
 - [Rolling Update Strategy Examples](./examples/values-rolling-update-example.yaml) - Examples for configuring deployment update strategies
+- [Extra Deploy Examples](./examples/values-extra-deploy-example.yaml) - Examples for deploying additional Kubernetes resources (Jobs, CronJobs, ServiceMonitors, etc.)
 - [Web Application Example](./examples/values-webapp-example.yaml) - Complete example for deploying a web application
 - [StatefulSet Example](./examples/values-stateful-example.yaml) - Complete example for deploying a stateful application
 - [Microservice Example](./examples/values-microservice-example.yaml) - Complete example for deploying a microservice
