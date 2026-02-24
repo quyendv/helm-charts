@@ -38,7 +38,8 @@ configMaps:
         cache_enabled: true
         max_connections: 100
 
-extraEnvVarsCM: "{{ include \"generic-app.fullname\" . }}"
+extraEnvVarsConfigMaps:
+  - "{{ include \"generic-app.fullname\" . }}"
 
 # Secrets for sensitive configuration
 secrets:
@@ -48,7 +49,8 @@ secrets:
     jwt-secret: "my-jwt-secret"
     database-url: "postgresql://user:pass@db:5432/mydb"
 
-extraEnvVarsSecret: "{{ include \"generic-app.fullname\" . }}"
+extraEnvVarsSecrets:
+  - "{{ include \"generic-app.fullname\" . }}"
 
 # Additional environment variables
 extraEnvVars:

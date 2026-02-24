@@ -43,7 +43,8 @@ secrets:
   data:
     POSTGRES_PASSWORD: "changeme123"  # This will be base64 encoded
 
-extraEnvVarsSecret: "{{ include \"generic-app.fullname\" . }}"
+extraEnvVarsSecrets:
+  - "{{ include \"generic-app.fullname\" . }}"
 
 # Resource limits
 resources:

@@ -274,10 +274,10 @@ Return the pod annotations
   {{- if .Values.podAnnotations }}
 {{ include "generic-app.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) }}
   {{- end }}
-  {{- if and .Values.configMaps.enabled (not .Values.extraEnvVarsCM) }}
+  {{- if .Values.configMaps.enabled }}
 checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
   {{- end }}
-  {{- if and .Values.secrets.enabled (not .Values.extraEnvVarsSecret) }}
+  {{- if .Values.secrets.enabled }}
 checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
   {{- end }}
 {{- end -}}
