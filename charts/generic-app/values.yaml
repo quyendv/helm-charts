@@ -775,27 +775,64 @@ runtimeClassName: ""
 hostAliases: []
 
 ## @param extraDeploy Array of extra objects to deploy with the release (supports templating)
-## This allows you to deploy additional Kubernetes resources alongside your application
-## All objects will be rendered as templates, so you can use Helm template functions and variables
-## e.g:
+## This allows you to deploy additional Kubernetes resources alongside your application.
+## Each item is rendered via "generic-app.tplvalues.render", which calls Helm's tpl function.
+##
+## IMPORTANT: There are three ways to define each item:
+##
+## ┌─────────────────────────────────────────────────────────────────────────────┐
+## │ Method 1: Block scalar string (|)                                         │
+## │ REQUIRED when templates produce mappings/arrays or use conditionals.       │
+## │                                                                            │
+## │ Use YAML block scalar (|) so the entire item is a string passed to tpl    │
+## │ directly (without toYaml). This is the ONLY way to use:                   │
+## │   - Template functions that produce mapping/array output:                 │
+## │     labels, selector, matchLabels, annotations (via include)              │
+## │   - Conditional blocks: {{- if ... }}, {{- range ... }}                   │
+## │                                                                            │
+## │ Why: When an item is a map, tplvalues.render calls toYaml first, which    │
+## │ quotes strings containing {{ }}. This breaks mapping fields because the   │
+## │ rendered output becomes a quoted string instead of a YAML mapping.        │
+## ├─────────────────────────────────────────────────────────────────────────────┤
+## │ Method 2: Plain YAML map with quoted templates for string fields          │
+## │ OK when templates only produce scalar (string/number) values.             │
+## │                                                                            │
+## │ For fields whose final value is a simple string (name, namespace, image,  │
+## │ annotation values, etc.), you can use quoted template expressions like    │
+## │ '{{ .Values.foo }}' inside a plain YAML map. This works because:          │
+## │   - YAML parser reads the quoted expression as a string                   │
+## │   - toYaml preserves it as a string → tpl evaluates it                   │
+## │   - The result is still a valid string value                              │
+## │                                                                            │
+## │ Do NOT use this for mapping fields (labels, selector, matchLabels) —      │
+## │ the quotes from toYaml will remain and break the YAML structure.          │
+## ├─────────────────────────────────────────────────────────────────────────────┤
+## │ Method 3: Plain YAML map (fully static, no template functions)            │
+## │                                                                            │
+## │ Use a standard YAML map when no template expressions are needed at all.   │
+## └─────────────────────────────────────────────────────────────────────────────┘
+##
+## Example — Method 1 (block scalar, templates with mappings/conditionals):
 ## extraDeploy:
-##   - apiVersion: v1
+##   - |
+##     apiVersion: v1
 ##     kind: ConfigMap
 ##     metadata:
 ##       name: {{ include "generic-app.fullname" . }}-extra-config
 ##       namespace: {{ include "generic-app.namespace" . }}
-##       labels: {{- include "generic-app.labels" . | nindent 8 }}
+##       labels: {{- include "generic-app.labels" . | nindent 4 }}
 ##     data:
 ##       extra.conf: |
 ##         server {
 ##           listen 8080;
 ##         }
-##   - apiVersion: batch/v1
+##   - |
+##     apiVersion: batch/v1
 ##     kind: Job
 ##     metadata:
 ##       name: {{ include "generic-app.fullname" . }}-migration
 ##       namespace: {{ include "generic-app.namespace" . }}
-##       labels: {{- include "generic-app.labels" . | nindent 8 }}
+##       labels: {{- include "generic-app.labels" . | nindent 4 }}
 ##     spec:
 ##       template:
 ##         spec:
@@ -805,5 +842,36 @@ hostAliases: []
 ##             command: ["migrate", "up"]
 ##           restartPolicy: OnFailure
 ##
+## Example — Method 2 (plain map, quoted templates for string fields only):
+## extraDeploy:
+##   - apiVersion: v1
+##     kind: PersistentVolumeClaim
+##     metadata:
+##       name: '{{ include "generic-app.fullname" . }}-cache-pvc'
+##       namespace: '{{ .Values.namespaceOverride | default "default" }}'
+##       labels:
+##         app: my-app
+##     spec:
+##       accessModes:
+##         - ReadWriteOnce
+##       resources:
+##         requests:
+##           storage: 8Gi
+##
+## Example — Method 3 (plain map, fully static):
+## extraDeploy:
+##   - apiVersion: v1
+##     kind: PersistentVolumeClaim
+##     metadata:
+##       name: my-static-pvc
+##       namespace: my-namespace
+##       labels:
+##         app: my-app
+##     spec:
+##       accessModes:
+##         - ReadWriteOnce
+##       resources:
+##         requests:
+##           storage: 8Gi
+##
 extraDeploy: []
-
