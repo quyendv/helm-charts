@@ -264,6 +264,7 @@
           <div class="features">
             <div class="feature">✓ Deployment & StatefulSet</div>
             <div class="feature">✓ Ingress with TLS</div>
+            <div class="feature">✓ Gateway API (HTTPRoute)</div>
             <div class="feature">✓ ConfigMaps & Secrets</div>
             <div class="feature">✓ PVC Support</div>
             <div class="feature">✓ HPA & PDB</div>
@@ -309,7 +310,7 @@
     <script>
       // Fetch chart version from index.yaml
       async function fetchChartVersion() {
-        const defaultVersion = 'v1.4.0';
+        const defaultVersion = 'v1.7.0';
         try {
           const response = await fetch('index.yaml');
           const text = await response.text();

@@ -46,7 +46,7 @@ helm install my-app quyendv/generic-app
 helm install my-app quyendv/generic-app -f my-values.yaml
 
 # Install specific version
-helm install my-app quyendv/generic-app --version 1.0.0
+helm install my-app quyendv/generic-app --version 1.7.0
 
 # Install with inline values
 helm install my-app quyendv/generic-app \
@@ -62,8 +62,8 @@ helm install my-app quyendv/generic-app \
 git clone https://github.com/quyendv/helm-charts.git
 cd helm-charts
 
-# Install chart
-helm install my-app ./generic-app -f my-values.yaml
+# Install chart (from repository root)
+helm install my-app ./charts/generic-app -f my-values.yaml
 ```
 
 ## Uninstalling the Chart
@@ -221,6 +221,8 @@ The following table lists the configurable parameters and their default values.
 
 ## Usage Examples
 
+Commands that reference `./charts/generic-app` assume your shell’s current directory is the **helm-charts** repository root (the folder that contains `charts/`).
+
 ### Example 1: Simple Web Application with SSL
 
 ```yaml
@@ -270,7 +272,7 @@ autoscaling:
 Install:
 
 ```bash
-helm install myapp ./generic-app -f values-webapp.yaml
+helm install myapp ./charts/generic-app -f charts/generic-app/examples/values-webapp-example.yaml
 ```
 
 ### Example 2: StatefulSet with Persistent Storage
@@ -308,7 +310,7 @@ resources:
 Install:
 
 ```bash
-helm install postgres ./generic-app -f values-stateful.yaml
+helm install postgres ./charts/generic-app -f charts/generic-app/examples/values-stateful-example.yaml
 ```
 
 ### Example 3: Application with ConfigMap and Secrets
@@ -607,7 +609,7 @@ extraDeploy:
 Install:
 
 ```bash
-helm install myapp ./generic-app -f values-extra-deploy.yaml
+helm install myapp ./charts/generic-app -f charts/generic-app/examples/values-extra-deploy-example.yaml
 ```
 
 ## Best Practices
@@ -693,7 +695,7 @@ helm get values my-app
 helm install my-app quyendv/generic-app --dry-run --debug
 
 # Template locally
-helm template my-app ./generic-app -f my-values.yaml
+helm template my-app ./charts/generic-app -f my-values.yaml
 
 # Check pod logs
 kubectl logs -l app.kubernetes.io/name=generic-app
@@ -730,7 +732,7 @@ spec:
   source:
     repoURL: https://quyendv.github.io/helm-charts
     chart: generic-app
-    targetRevision: 1.0.0
+    targetRevision: 1.7.0
     helm:
       values: |
         image:
@@ -760,7 +762,7 @@ spec:
   chart:
     spec:
       chart: generic-app
-      version: 1.0.0
+      version: 1.7.0
       sourceRef:
         kind: HelmRepository
         name: quyendv
@@ -778,6 +780,7 @@ spec:
 - [Web Application Example](./examples/values-webapp-example.yaml) - Complete example for deploying a web application
 - [StatefulSet Example](./examples/values-stateful-example.yaml) - Complete example for deploying a stateful application
 - [Microservice Example](./examples/values-microservice-example.yaml) - Complete example for deploying a microservice
+- [Gateway API Example](./examples/values-gateway-api-example.yaml) - HTTPRoute attached to an existing Gateway (optional cert-manager Certificate)
 
 ## References
 
