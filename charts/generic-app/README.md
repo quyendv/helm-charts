@@ -7,6 +7,7 @@ A comprehensive, production-ready Helm chart that can be used as a template for 
 - ✅ Support for both **Deployment** and **StatefulSet**
 - ✅ Flexible **Service** configuration (ClusterIP, NodePort, LoadBalancer)
 - ✅ **Ingress** with TLS support
+- ✅ **Gateway API** (`HTTPRoute`) and optional cert-manager **Certificate** for TLS secrets used by Gateways
 - ✅ **Automatic SSL/TLS certificate** management with cert-manager (Let's Encrypt, CA, Vault)
 - ✅ **ConfigMaps** and **Secrets** management
 - ✅ **Persistent Volume Claims** (PVC)
@@ -149,6 +150,19 @@ The following table lists the configurable parameters and their default values.
 | `ingress.path`             | Default path for the ingress resource | `/`         |
 | `ingress.tls`              | Enable TLS configuration              | `false`     |
 | `ingress.annotations`      | Ingress annotations                   | `{}`        |
+
+### Gateway API parameters
+
+| Parameter                                  | Description                                                         | Default |
+| ------------------------------------------ | ------------------------------------------------------------------- | ------- |
+| `gatewayApi.enabled`                       | Create `HTTPRoute` (and optional `Certificate`)                     | `false` |
+| `gatewayApi.apiVersion`                    | HTTPRoute API version (empty = `gateway.networking.k8s.io/v1`)     | `""`    |
+| `gatewayApi.hostname`                      | Convenience hostname (merged into route/cert hostnames)            | `""`    |
+| `gatewayApi.httpRoute.parentRefs`          | **Required** when enabled: attachment to existing Gateway(s)        | `[]`    |
+| `gatewayApi.httpRoute.hostnames`           | `HTTPRoute` `spec.hostnames`                                       | `[]`    |
+| `gatewayApi.httpRoute.rules`               | Full `spec.rules`; if empty, chart generates path → Service rule   | `[]`    |
+| `gatewayApi.certificate.enabled`           | Create cert-manager `Certificate` for TLS material                  | `false` |
+| `gatewayApi.certificate.issuerRef.name`    | Issuer / ClusterIssuer name (required if certificate enabled)       | `""`    |
 
 ### Persistence Parameters
 
@@ -632,6 +646,8 @@ generic-app/
 │   ├── service.yaml        # Service resource
 │   ├── service-headless.yaml  # Headless service for StatefulSet
 │   ├── ingress.yaml        # Ingress resource
+│   ├── httproute.yaml      # Gateway API HTTPRoute
+│   ├── gatewayapi-certificate.yaml  # cert-manager Certificate (Gateway TLS secret)
 │   ├── issuer.yaml         # Cert-manager Issuer/ClusterIssuer
 │   ├── configmap.yaml      # ConfigMap resource
 │   ├── secret.yaml         # Secret resource
@@ -699,6 +715,7 @@ kubectl logs -l app.kubernetes.io/name=generic-app
 
 - Verify service type and port configuration
 - Check ingress controller if using Ingress
+- For Gateway API: confirm `HTTPRoute` is accepted (`kubectl describe httproute`), `ReferenceGrant` if Gateway is in another namespace, and listener TLS references the intended Secret
 
 ## CI/CD Integration
 

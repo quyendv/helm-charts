@@ -1,0 +1,35 @@
+# Gateway API: HTTPRoute attaches to a platform-managed Gateway.
+# Cross-namespace attachment requires ReferenceGrant in the Gateway namespace — see Gateway API docs.
+#
+# TLS: either use gatewayApi.certificate (Certificate → Secret) and reference that Secret on the Gateway listener,
+# or use cert-manager Gateway annotations / Gateway-shim on the Gateway object (outside this chart).
+
+image:
+  repository: nginx
+  tag: '1.25.3'
+
+service:
+  enabled: true
+  type: ClusterIP
+  ports:
+    http: 80
+
+ingress:
+  enabled: false
+
+gatewayApi:
+  enabled: true
+  hostname: myapp.example.com
+  httpRoute:
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: external-http
+        namespace: gateway-system
+        sectionName: http
+    # hostnames: []  # optional; defaults from gatewayApi.hostname when set
+  certificate:
+    enabled: true
+    issuerRef:
+      name: letsencrypt-prod
+    # secretName: myapp.example.com-tls  # optional override

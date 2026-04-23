@@ -150,6 +150,15 @@ WARNING: Rolling tag detected ({{ .Values.image.repository }}:{{ .Values.image.t
 {{- end -}}
 
 {{/*
+Warn when both Ingress and Gateway API are enabled (duplicate north–south paths).
+*/}}
+{{- define "generic-app.checkGatewayApiIngressConflict" -}}
+  {{- if and .Values.ingress.enabled .Values.gatewayApi.enabled }}
+WARNING: Both ingress.enabled and gatewayApi.enabled are true. In production, prefer a single entry path (Ingress or Gateway API) for the same hostname unless you intentionally split traffic.
+  {{- end }}
+{{- end -}}
+
+{{/*
 ================================================================================
 API VERSION HELPERS
 ================================================================================
@@ -196,6 +205,32 @@ Ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
     {{- true -}}
   {{- end -}}
 {{- end -}}
+
+{{/*
+Return HTTPRoute apiVersion for Gateway API
+*/}}
+{{- define "generic-app.gatewayApi.httpRoute.apiVersion" -}}
+  {{- if .Values.gatewayApi.apiVersion }}
+    {{- .Values.gatewayApi.apiVersion }}
+  {{- else }}
+    {{- print "gateway.networking.k8s.io/v1" }}
+  {{- end }}
+{{- end }}
+
+{{/*
+TLS secret name for gatewayApi Certificate (63 char limit)
+*/}}
+{{- define "generic-app.gatewayApi.certificate.secretName" -}}
+  {{- $root := .root }}
+  {{- $dns := .dnsNames }}
+  {{- if $root.Values.gatewayApi.certificate.secretName }}
+    {{- $root.Values.gatewayApi.certificate.secretName | trunc 63 | trimSuffix "-" }}
+  {{- else if $dns }}
+    {{- printf "%s-tls" (first $dns) | trunc 63 | trimSuffix "-" }}
+  {{- else }}
+    {{- printf "%s-gateway-tls" (include "generic-app.fullname" $root) | trunc 63 | trimSuffix "-" }}
+  {{- end }}
+{{- end }}
 
 {{/*
 ================================================================================
@@ -253,6 +288,7 @@ Compile all warnings into a single message.
 {{- define "generic-app.validateValues" -}}
   {{- $messages := list -}}
   {{- $messages := append $messages (include "generic-app.checkRollingTags" .) -}}
+  {{- $messages := append $messages (include "generic-app.checkGatewayApiIngressConflict" .) -}}
   {{- $messages := without $messages "" -}}
   {{- $message := join "\n" $messages -}}
 

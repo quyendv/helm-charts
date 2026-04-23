@@ -1,0 +1,49 @@
+{{- if and .Values.gatewayApi.enabled .Values.gatewayApi.certificate.enabled }}
+{{- $dns := .Values.gatewayApi.certificate.dnsNames | default list }}
+{{- if not $dns }}
+  {{- $hn := .Values.gatewayApi.httpRoute.hostnames | default list }}
+  {{- if .Values.gatewayApi.hostname }}
+  {{- $hn = concat $hn (list .Values.gatewayApi.hostname) }}
+  {{- end }}
+  {{- $dns = compact $hn | uniq }}
+{{- end }}
+{{- if not $dns }}
+{{- fail "gatewayApi.certificate.enabled requires gatewayApi.certificate.dnsNames or HTTPRoute hostnames (gatewayApi.hostname / gatewayApi.httpRoute.hostnames)" }}
+{{- end }}
+{{- $issuerName := .Values.gatewayApi.certificate.issuerRef.name }}
+{{- if not $issuerName }}
+{{- fail "gatewayApi.certificate.issuerRef.name is required when gatewayApi.certificate.enabled is true" }}
+{{- end }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ default (printf "%s-gateway-tls" (include "generic-app.fullname" .)) .Values.gatewayApi.certificate.name | trunc 63 | trimSuffix "-" }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels:
+    {{- include "generic-app.labels" . | nindent 4 }}
+  {{- if or .Values.gatewayApi.certificate.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.gatewayApi.certificate.annotations }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.gatewayApi.certificate.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  secretName: {{ include "generic-app.gatewayApi.certificate.secretName" (dict "root" $ "dnsNames" $dns) }}
+  issuerRef:
+    group: {{ .Values.gatewayApi.certificate.issuerRef.group | default "cert-manager.io" }}
+    kind: {{ .Values.gatewayApi.certificate.issuerRef.kind | default "ClusterIssuer" }}
+    name: {{ $issuerName | quote }}
+  dnsNames:
+    {{- range $dns }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- if .Values.gatewayApi.certificate.duration }}
+  duration: {{ .Values.gatewayApi.certificate.duration | quote }}
+  {{- end }}
+  {{- if .Values.gatewayApi.certificate.renewBefore }}
+  renewBefore: {{ .Values.gatewayApi.certificate.renewBefore | quote }}
+  {{- end }}
+{{- end }}

@@ -13,6 +13,15 @@ Your application is available at:
 {{- else }}
   http://{{ .Values.ingress.hostname }}{{ .Values.ingress.path }}
 {{- end }}
+{{- else if .Values.gatewayApi.enabled }}
+
+Gateway API (HTTPRoute) is enabled:
+  kubectl get httproute -n {{ include "generic-app.namespace" . }} {{ default (include "generic-app.fullname" .) .Values.gatewayApi.httpRoute.name }}
+
+Traffic depends on your Gateway status and listener configuration (not shown by this chart).
+{{- if .Values.gatewayApi.certificate.enabled }}
+cert-manager Certificate is enabled; ensure the Gateway listener references spec.secretName from the Certificate (or your platform TLS pattern).
+{{- end }}
 {{- else }}
 
 Your application has been deployed successfully!

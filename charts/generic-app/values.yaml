@@ -244,10 +244,18 @@ certManager:
     ##
     solvers:
       ## @param certManager.acme.solvers HTTP01 solver configuration
-      ## e.g:
+      ## e.g (Ingress):
       ## - http01:
       ##     ingress:
       ##       class: nginx
+      ## e.g (Gateway API — cert-manager 1.5+):
+      ## - http01:
+      ##     gatewayHTTPRoute:
+      ##       parentRefs:
+      ##         - group: gateway.networking.k8s.io
+      ##           kind: Gateway
+      ##           name: public-gateway
+      ##           namespace: gateway-system
       ##
       - http01:
           ingress:
@@ -366,6 +374,91 @@ ingress:
   ##             name: http
   ##
   extraRules: []
+
+## @section Gateway API parameters
+## Kubernetes Gateway API (HTTPRoute). Typical production split: platform team owns Gateway +
+## GatewayClass; application charts attach HTTPRoute via parentRefs. Do not enable both ingress
+## and gatewayApi for the same public hostname unless you intend split traffic.
+## ref: https://gateway-api.sigs.k8s.io/
+## ref (TLS with cert-manager): https://cert-manager.io/docs/usage/gateway/
+##
+gatewayApi:
+  ## @param gatewayApi.enabled Create HTTPRoute (and optional Certificate) for Gateway API
+  ##
+  enabled: false
+  ## @param gatewayApi.apiVersion HTTPRoute API version (leave empty for gateway.networking.k8s.io/v1)
+  ##
+  apiVersion: ""
+  ## @param gatewayApi.hostname Convenience hostname (appended to httpRoute.hostnames for route + cert)
+  ##
+  hostname: ""
+  ## HTTPRoute (gateway.networking.k8s.io)
+  ##
+  httpRoute:
+    ## @param gatewayApi.httpRoute.name HTTPRoute resource name (defaults to release fullname)
+    ##
+    name: ""
+    ## @param gatewayApi.httpRoute.annotations HTTPRoute annotations
+    ##
+    annotations: {}
+    ## @param gatewayApi.httpRoute.labels Extra labels for HTTPRoute
+    ##
+    labels: {}
+    ## @param gatewayApi.httpRoute.parentRefs Attach to existing Gateway(s) / GatewayClass via standard parentRefs
+    ## REQUIRED when gatewayApi.enabled is true. Example:
+    ## parentRefs:
+    ##   - group: gateway.networking.k8s.io
+    ##     kind: Gateway
+    ##     name: external-http
+    ##     namespace: gateway-system
+    ##     sectionName: https
+    ##
+    parentRefs: []
+    ## @param gatewayApi.httpRoute.hostnames HTTPRoute spec.hostnames (SNI / Host header routing)
+    ##
+    hostnames: []
+    ## @param gatewayApi.httpRoute.path Default path match when rules is empty (PathPrefix)
+    ##
+    path:
+      type: PathPrefix
+      value: /
+    ## @param gatewayApi.httpRoute.rules Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule)
+    ##
+    rules: []
+    ## @param gatewayApi.httpRoute.extraRules Rendered YAML appended after generated rules (advanced)
+    ##
+    extraRules: ""
+  ## Optional cert-manager Certificate (TLS secret consumed by Gateway listener or mesh).
+  ## Does not replace ReferenceGrant for cross-namespace Gateway attachment — configure that in the Gateway namespace.
+  ##
+  certificate:
+    ## @param gatewayApi.certificate.enabled Create cert-manager.io/v1 Certificate
+    ##
+    enabled: false
+    ## @param gatewayApi.certificate.name Certificate resource name (defaults to fullname + "-gateway-tls")
+    ##
+    name: ""
+    ## @param gatewayApi.certificate.annotations Certificate annotations
+    ##
+    annotations: {}
+    ## @param gatewayApi.certificate.secretName Kubernetes Secret name for TLS material (defaults to first hostname + "-tls", else fullname + "-gateway-tls")
+    ##
+    secretName: ""
+    ## @param gatewayApi.certificate.issuerRef cert-manager issuer reference (production: ClusterIssuer)
+    ##
+    issuerRef:
+      group: cert-manager.io
+      kind: ClusterIssuer
+      name: ""
+    ## @param gatewayApi.certificate.dnsNames Certificate spec.dnsNames (defaults to effective HTTPRoute hostnames)
+    ##
+    dnsNames: []
+    ## @param gatewayApi.certificate.duration Optional certificate duration (e.g. 2160h)
+    ##
+    duration: ""
+    ## @param gatewayApi.certificate.renewBefore Optional renew before (e.g. 360h)
+    ##
+    renewBefore: ""
 
 ## @section Resources parameters
 
