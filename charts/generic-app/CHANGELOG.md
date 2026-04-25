@@ -5,6 +5,19 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-04-26
+
+### Added
+
+- **NGINX Gateway Fabric (optional)**: `gatewayApi.nginxGatewayFabric` presets for the chart-managed single `HTTPRoute`
+  - Optional `ClientSettingsPolicy` for `client_max_body_size` via `clientSettings.bodyMaxSize`
+  - Optional shared `SnippetsFilter` (stable name `*-ngf-snippets`) with Ingress-like `proxy_*_timeout` directives from `upstreamProxyTimeouts` and optional `snippets.extra` list entries
+  - Single `ExtensionRef` on the generated default `HTTPRoute` rule when snippets are used; no auto-injection when `gatewayApi.httpRoute.rules` is non-empty (documented)
+- Example: `examples/values-gateway-api-ngf-example.yaml`
+- Template guard: `gatewayApi.nginxGatewayFabric.enabled` requires `gatewayApi.enabled`
+- **Gateway API redirect option**: `gatewayApi.httpRedirect` can create an additional redirect-only `HTTPRoute` (`RequestRedirect`) to enforce HTTP -> HTTPS without defining redirect rules per app route
+- Example: `examples/values-gateway-api-redirect-example.yaml`
+
 ## [1.7.0] - 2026-04-23
 
 ### Added

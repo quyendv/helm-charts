@@ -1,0 +1,39 @@
+{{- $ngf := .Values.gatewayApi.nginxGatewayFabric | default dict }}
+{{- if and .Values.gatewayApi.enabled $ngf.enabled }}
+{{- $t := $ngf.upstreamProxyTimeouts | default dict }}
+{{- $hasTimeout := or (ne (default "" $t.connect) "") (ne (default "" $t.read) "") (ne (default "" $t.send) "") }}
+{{- $snippets := $ngf.snippets | default dict }}
+{{- $extra := $snippets.extra | default list }}
+{{- if or $hasTimeout (gt (len $extra) 0) }}
+{{- $lines := list }}
+{{- if ne (default "" $t.connect) "" }}
+{{- $lines = append $lines (printf "proxy_connect_timeout %s;" $t.connect) }}
+{{- end }}
+{{- if ne (default "" $t.read) "" }}
+{{- $lines = append $lines (printf "proxy_read_timeout %s;" $t.read) }}
+{{- end }}
+{{- if ne (default "" $t.send) "" }}
+{{- $lines = append $lines (printf "proxy_send_timeout %s;" $t.send) }}
+{{- end }}
+{{- $timeoutBlock := join "\n" $lines }}
+apiVersion: gateway.nginx.org/v1alpha1
+kind: SnippetsFilter
+metadata:
+  name: {{ include "generic-app.gatewayApi.nginxGatewayFabric.snippetsFilterName" . | quote }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels:
+    {{- include "generic-app.labels" . | nindent 4 }}
+spec:
+  snippets:
+    {{- if $hasTimeout }}
+    - context: http.server.location
+      value: |
+{{ $timeoutBlock | indent 8 }}
+    {{- end }}
+    {{- range $extra }}
+    - context: {{ .context | quote }}
+      value: |
+{{ .value | indent 8 }}
+    {{- end }}
+{{- end }}
+{{- end }}

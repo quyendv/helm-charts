@@ -1,0 +1,51 @@
+{{- if and .Values.gatewayApi.enabled .Values.gatewayApi.httpRedirect.enabled }}
+{{- if not .Values.gatewayApi.httpRedirect.parentRefs }}
+{{- fail "gatewayApi.httpRedirect.parentRefs is required when gatewayApi.httpRedirect.enabled is true" }}
+{{- end }}
+{{- $hn := .Values.gatewayApi.httpRedirect.hostnames | default list }}
+{{- if and (eq (len $hn) 0) .Values.gatewayApi.httpRoute.hostnames }}
+{{- $hn = .Values.gatewayApi.httpRoute.hostnames }}
+{{- end }}
+{{- if and (eq (len $hn) 0) .Values.gatewayApi.hostname }}
+{{- $hn = list .Values.gatewayApi.hostname }}
+{{- end }}
+{{- $hn = compact $hn | uniq }}
+apiVersion: {{ include "generic-app.gatewayApi.httpRoute.apiVersion" . }}
+kind: HTTPRoute
+metadata:
+  name: {{ default (printf "%s-http-redirect" (include "generic-app.fullname" .)) .Values.gatewayApi.httpRedirect.name | trunc 63 | trimSuffix "-" | quote }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels:
+    {{- include "generic-app.labels" . | nindent 4 }}
+    {{- with .Values.gatewayApi.httpRedirect.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if or .Values.gatewayApi.httpRedirect.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.gatewayApi.httpRedirect.annotations }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.gatewayApi.httpRedirect.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  parentRefs:
+{{- toYaml .Values.gatewayApi.httpRedirect.parentRefs | nindent 4 }}
+  {{- if $hn }}
+  hostnames:
+    {{- range $hn }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: {{ .Values.gatewayApi.httpRedirect.path.type }}
+            value: {{ .Values.gatewayApi.httpRedirect.path.value | quote }}
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: {{ .Values.gatewayApi.httpRedirect.scheme | quote }}
+            statusCode: {{ .Values.gatewayApi.httpRedirect.statusCode }}
+{{- end }}

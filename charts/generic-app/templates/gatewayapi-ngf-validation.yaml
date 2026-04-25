@@ -1,0 +1,4 @@
+{{- $ngf := .Values.gatewayApi.nginxGatewayFabric | default dict }}
+{{- if and $ngf.enabled (not .Values.gatewayApi.enabled) }}
+{{- fail "gatewayApi.nginxGatewayFabric.enabled requires gatewayApi.enabled to be true" }}
+{{- end }}

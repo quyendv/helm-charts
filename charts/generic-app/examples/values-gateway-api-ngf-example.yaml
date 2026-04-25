@@ -1,0 +1,44 @@
+# Gateway API HTTPRoute with optional NGINX Gateway Fabric (NGF) presets.
+# Prerequisites: gateway.nginx.org CRDs; for snippets, install NGF with nginxGateway.snippets.enable: true.
+# ref: https://docs.nginx.com/nginx-gateway-fabric/
+
+image:
+  repository: nginx
+  tag: '1.25.3'
+
+service:
+  enabled: true
+  type: ClusterIP
+  ports:
+    http: 80
+
+ingress:
+  enabled: false
+
+gatewayApi:
+  enabled: true
+  hostname: myapp.example.com
+  httpRoute:
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: external-http
+        namespace: gateway-system
+        sectionName: https
+  certificate:
+    enabled: false
+  nginxGatewayFabric:
+    enabled: true
+    clientSettings:
+      bodyMaxSize: 1024m
+    upstreamProxyTimeouts:
+      connect: 600s
+      read: 600s
+      send: 600s
+    snippets:
+      extra: []
+      # Example extra snippet (uncomment and set a valid context for your NGF version):
+      # extra:
+      #   - context: http.server.location
+      #     value: |
+      #       # custom_directive value;

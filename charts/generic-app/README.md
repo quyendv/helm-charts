@@ -46,7 +46,7 @@ helm install my-app quyendv/generic-app
 helm install my-app quyendv/generic-app -f my-values.yaml
 
 # Install specific version
-helm install my-app quyendv/generic-app --version 1.7.0
+helm install my-app quyendv/generic-app --version 1.8.0
 
 # Install with inline values
 helm install my-app quyendv/generic-app \
@@ -161,8 +161,30 @@ The following table lists the configurable parameters and their default values.
 | `gatewayApi.httpRoute.parentRefs`          | **Required** when enabled: attachment to existing Gateway(s)        | `[]`    |
 | `gatewayApi.httpRoute.hostnames`           | `HTTPRoute` `spec.hostnames`                                       | `[]`    |
 | `gatewayApi.httpRoute.rules`               | Full `spec.rules`; if empty, chart generates path → Service rule   | `[]`    |
+| `gatewayApi.httpRedirect.enabled`          | Create extra HTTPRoute with `RequestRedirect` (HTTP → HTTPS)        | `false` |
+| `gatewayApi.httpRedirect.parentRefs`       | ParentRefs for redirect route (typically HTTP listener)             | `[]`    |
+| `gatewayApi.httpRedirect.statusCode`       | Redirect status code for `RequestRedirect`                          | `301`   |
 | `gatewayApi.certificate.enabled`           | Create cert-manager `Certificate` for TLS material                  | `false` |
 | `gatewayApi.certificate.issuerRef.name`    | Issuer / ClusterIssuer name (required if certificate enabled)       | `""`    |
+
+#### NGINX Gateway Fabric (optional presets)
+
+When `gatewayApi.nginxGatewayFabric.enabled` is `true` (requires `gatewayApi.enabled`), the chart can render NGF resources alongside the single chart-managed `HTTPRoute`:
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `gatewayApi.nginxGatewayFabric.enabled` | Create `ClientSettingsPolicy` / `SnippetsFilter` when configured | `false` |
+| `gatewayApi.nginxGatewayFabric.clientSettings.bodyMaxSize` | `ClientSettingsPolicy` `body.maxSize` (e.g. `1024m`). Empty = omit policy. | `""` |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.connect` | Snippet: `proxy_connect_timeout` (e.g. `600s`). Empty = omit directive. | `""` |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.read` | Snippet: `proxy_read_timeout` | `""` |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.send` | Snippet: `proxy_send_timeout` | `""` |
+| `gatewayApi.nginxGatewayFabric.snippets.extra` | Extra `SnippetsFilter.spec.snippets` items (`context` + `value`) merged into one release-scoped `SnippetsFilter` | `[]` |
+
+**Behavior notes**
+
+- Cluster must provide `gateway.nginx.org` CRDs (`ClientSettingsPolicy`, `SnippetsFilter`). Snippets require the NGF control plane to be installed with **snippets enabled** (Helm value `nginxGateway.snippets.enable: true`).
+- One shared `SnippetsFilter` per release is named `{{ release fullname }}-ngf-snippets` (63-char safe). The chart injects a single `HTTPRoute` `ExtensionRef` to it only when using the **generated default rule** (`gatewayApi.httpRoute.rules` empty). If you set full `gatewayApi.httpRoute.rules` yourself, add the `ExtensionRef` filter in your rules or use `extraDeploy`.
+- For HTTP → HTTPS migration, you can enable `gatewayApi.httpRedirect` to create an additional redirect-only `HTTPRoute` attached to your HTTP listener.
 
 ### Persistence Parameters
 
@@ -732,7 +754,7 @@ spec:
   source:
     repoURL: https://quyendv.github.io/helm-charts
     chart: generic-app
-    targetRevision: 1.7.0
+    targetRevision: 1.8.0
     helm:
       values: |
         image:
@@ -762,7 +784,7 @@ spec:
   chart:
     spec:
       chart: generic-app
-      version: 1.7.0
+      version: 1.8.0
       sourceRef:
         kind: HelmRepository
         name: quyendv
@@ -781,6 +803,8 @@ spec:
 - [StatefulSet Example](./examples/values-stateful-example.yaml) - Complete example for deploying a stateful application
 - [Microservice Example](./examples/values-microservice-example.yaml) - Complete example for deploying a microservice
 - [Gateway API Example](./examples/values-gateway-api-example.yaml) - HTTPRoute attached to an existing Gateway (optional cert-manager Certificate)
+- [Gateway API HTTP Redirect Example](./examples/values-gateway-api-redirect-example.yaml) - main HTTPS route plus HTTPRoute `RequestRedirect` for HTTP → HTTPS
+- [Gateway API + NGINX Gateway Fabric](./examples/values-gateway-api-ngf-example.yaml) - optional `ClientSettingsPolicy` and `SnippetsFilter` presets (single HTTPRoute)
 
 ## References
 

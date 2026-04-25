@@ -234,6 +234,47 @@ TLS secret name for gatewayApi Certificate (63 char limit)
 
 {{/*
 ================================================================================
+GATEWAY API — NGINX GATEWAY FABRIC (NGF) HELPERS
+================================================================================
+*/}}
+
+{{/*
+Effective HTTPRoute metadata.name (same as templates/httproute.yaml).
+*/}}
+{{- define "generic-app.gatewayApi.httpRoute.resourceName" -}}
+{{- default (include "generic-app.fullname" .) .Values.gatewayApi.httpRoute.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Shared SnippetsFilter name for this release (one CRD holds all snippet blocks).
+*/}}
+{{- define "generic-app.gatewayApi.nginxGatewayFabric.snippetsFilterName" -}}
+{{- printf "%s-ngf-snippets" (include "generic-app.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+ClientSettingsPolicy name for NGF body size preset.
+*/}}
+{{- define "generic-app.gatewayApi.nginxGatewayFabric.clientSettingsPolicyName" -}}
+{{- printf "%s-ngf-client-settings" (include "generic-app.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Emit "1" when the chart should inject SnippetsFilter ExtensionRef on the generated default HTTPRoute rule.
+*/}}
+{{- define "generic-app.gatewayApi.nginxGatewayFabric.injectSnippetExtensionRef" -}}
+{{- $ngf := .Values.gatewayApi.nginxGatewayFabric | default dict -}}
+{{- if and .Values.gatewayApi.enabled $ngf.enabled (eq (len (.Values.gatewayApi.httpRoute.rules | default list)) 0) -}}
+{{- $t := $ngf.upstreamProxyTimeouts | default dict -}}
+{{- $hasTimeout := or (ne (default "" $t.connect) "") (ne (default "" $t.read) "") (ne (default "" $t.send) "") -}}
+{{- $snippets := $ngf.snippets | default dict -}}
+{{- $extra := $snippets.extra | default list -}}
+{{- if or $hasTimeout (gt (len $extra) 0) -}}1{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+================================================================================
 TEMPLATE RENDERING HELPERS
 ================================================================================
 */}}

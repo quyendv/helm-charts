@@ -422,12 +422,47 @@ gatewayApi:
     path:
       type: PathPrefix
       value: /
-    ## @param gatewayApi.httpRoute.rules Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule)
+    ## @param gatewayApi.httpRoute.rules Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule).
+    ## When non-empty, the chart does not inject nginxGatewayFabric SnippetsFilter ExtensionRef on rules (add filters yourself or use extraDeploy).
     ##
     rules: []
     ## @param gatewayApi.httpRoute.extraRules Rendered YAML appended after generated rules (advanced)
     ##
     extraRules: ""
+  ## Optional HTTP -> HTTPS redirect route (similar intent to ingress force-ssl-redirect).
+  ## This creates an additional HTTPRoute with RequestRedirect filter.
+  ##
+  httpRedirect:
+    ## @param gatewayApi.httpRedirect.enabled Create an extra HTTPRoute that redirects requests to HTTPS
+    ##
+    enabled: false
+    ## @param gatewayApi.httpRedirect.name Redirect HTTPRoute resource name (defaults to fullname + "-http-redirect")
+    ##
+    name: ""
+    ## @param gatewayApi.httpRedirect.annotations Redirect HTTPRoute annotations
+    ##
+    annotations: {}
+    ## @param gatewayApi.httpRedirect.labels Extra labels for redirect HTTPRoute
+    ##
+    labels: {}
+    ## @param gatewayApi.httpRedirect.parentRefs ParentRefs for redirect route (typically HTTP listener, e.g. sectionName: http)
+    ## REQUIRED when gatewayApi.httpRedirect.enabled is true.
+    ##
+    parentRefs: []
+    ## @param gatewayApi.httpRedirect.hostnames Redirect route hostnames (defaults to effective route hostnames when empty)
+    ##
+    hostnames: []
+    ## @param gatewayApi.httpRedirect.path Match path for redirect route
+    ##
+    path:
+      type: PathPrefix
+      value: /
+    ## @param gatewayApi.httpRedirect.scheme Redirect target scheme
+    ##
+    scheme: https
+    ## @param gatewayApi.httpRedirect.statusCode Redirect status code
+    ##
+    statusCode: 301
   ## Optional cert-manager Certificate (TLS secret consumed by Gateway listener or mesh).
   ## Does not replace ReferenceGrant for cross-namespace Gateway attachment — configure that in the Gateway namespace.
   ##
@@ -459,6 +494,39 @@ gatewayApi:
     ## @param gatewayApi.certificate.renewBefore Optional renew before (e.g. 360h)
     ##
     renewBefore: ""
+  ## Optional NGINX Gateway Fabric (NGF) presets for the chart-managed HTTPRoute (single route only).
+  ## Requires gateway.nginx.org CRDs (ClientSettingsPolicy, SnippetsFilter). Snippets require NGF Helm
+  ## nginxGateway.snippets.enable: true. When gatewayApi.httpRoute.rules is non-empty, the chart does not
+  ## inject SnippetsFilter ExtensionRef (add filters in rules or use extraDeploy).
+  ##
+  nginxGatewayFabric:
+    ## @param gatewayApi.nginxGatewayFabric.enabled Turn on NGF policy/snippet resources (requires gatewayApi.enabled)
+    ##
+    enabled: false
+    ## Client ↔ NGINX settings (ClientSettingsPolicy → HTTPRoute)
+    ##
+    clientSettings:
+      ## @param gatewayApi.nginxGatewayFabric.clientSettings.bodyMaxSize Maps to client_max_body_size (e.g. 1024m). Empty = omit policy.
+      ##
+      bodyMaxSize: ""
+    ## NGINX ↔ upstream timeouts (SnippetsFilter, Ingress-like proxy_*_timeout). Empty strings = omit that directive.
+    ##
+    upstreamProxyTimeouts:
+      ## @param gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.connect e.g. 600s
+      ##
+      connect: ""
+      ## @param gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.read e.g. 600s
+      ##
+      read: ""
+      ## @param gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.send e.g. 600s
+      ##
+      send: ""
+    ## Extra SnippetsFilter entries merged into the same release-scoped SnippetsFilter (see README).
+    ##
+    snippets:
+      ## @param gatewayApi.nginxGatewayFabric.snippets.extra List of { context, value } maps (NGF SnippetsFilter item shape)
+      ##
+      extra: []
 
 ## @section Resources parameters
 

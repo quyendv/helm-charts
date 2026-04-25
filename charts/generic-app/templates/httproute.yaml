@@ -8,7 +8,7 @@
 apiVersion: {{ include "generic-app.gatewayApi.httpRoute.apiVersion" . }}
 kind: HTTPRoute
 metadata:
-  name: {{ default (include "generic-app.fullname" .) .Values.gatewayApi.httpRoute.name | trunc 63 | trimSuffix "-" }}
+  name: {{ include "generic-app.gatewayApi.httpRoute.resourceName" . | quote }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels:
     {{- include "generic-app.labels" . | nindent 4 }}
@@ -46,6 +46,14 @@ spec:
         - path:
             type: {{ .Values.gatewayApi.httpRoute.path.type }}
             value: {{ .Values.gatewayApi.httpRoute.path.value | quote }}
+      {{- if (include "generic-app.gatewayApi.nginxGatewayFabric.injectSnippetExtensionRef" .) }}
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.nginx.org
+            kind: SnippetsFilter
+            name: {{ include "generic-app.gatewayApi.nginxGatewayFabric.snippetsFilterName" . | quote }}
+      {{- end }}
       backendRefs:
         - name: {{ include "generic-app.fullname" . }}
           port: {{ index .Values.service.ports "http" }}

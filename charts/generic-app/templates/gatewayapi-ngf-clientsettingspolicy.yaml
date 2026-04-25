@@ -1,0 +1,21 @@
+{{- $ngf := .Values.gatewayApi.nginxGatewayFabric | default dict }}
+{{- if and .Values.gatewayApi.enabled $ngf.enabled }}
+{{- $cs := $ngf.clientSettings | default dict }}
+{{- $body := default "" $cs.bodyMaxSize }}
+{{- if ne $body "" }}
+apiVersion: gateway.nginx.org/v1alpha1
+kind: ClientSettingsPolicy
+metadata:
+  name: {{ include "generic-app.gatewayApi.nginxGatewayFabric.clientSettingsPolicyName" . | quote }}
+  namespace: {{ include "generic-app.namespace" . | quote }}
+  labels:
+    {{- include "generic-app.labels" . | nindent 4 }}
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: {{ include "generic-app.gatewayApi.httpRoute.resourceName" . | quote }}
+  body:
+    maxSize: {{ $body | quote }}
+{{- end }}
+{{- end }}
