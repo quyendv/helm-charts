@@ -44,7 +44,7 @@ commonAnnotations: {}
 ##
 replicaCount: 1
 
-## @param kind Workload kind (Deployment or StatefulSet)
+## @param kind Workload kind (Deployment, StatefulSet, or DaemonSet)
 ##
 kind: Deployment
 
@@ -80,6 +80,16 @@ command: []
 ## @param args Override default container args (useful when using custom images)
 ##
 args: []
+## @param containerPorts Map of container port names to port numbers. When set, these ports
+## are added to the container spec independently of service.ports, allowing ports that are
+## not exposed via the Service (e.g. metrics, admin). When empty, falls back to service.ports
+## for backward compatibility.
+## e.g:
+## containerPorts:
+##   http: 8080
+##   metrics: 9090
+##
+containerPorts: {}
 
 ## @param extraEnvVars Array with extra environment variables to add
 ## e.g:
@@ -424,6 +434,24 @@ gatewayApi:
       value: /
     ## @param gatewayApi.httpRoute.rules Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule).
     ## When non-empty, the chart does not inject nginxGatewayFabric SnippetsFilter ExtensionRef on rules (add filters yourself or use extraDeploy).
+    ## Rendered via tplvalues.render — supports three authoring styles:
+    ##   Style 1 — plain YAML list (no templates needed):
+    ##     rules:
+    ##       - backendRefs:
+    ##           - name: my-svc
+    ##             port: 8080
+    ##   Style 2 — YAML list with quoted templates for STRING fields only:
+    ##     rules:
+    ##       - backendRefs:
+    ##           - name: '{{ include "generic-app.fullname" . }}'
+    ##             port: 8080   # keep integer fields as literals, not templates
+    ##   Style 3 — block scalar string (required when integer fields also need templating):
+    ##     rules: |
+    ##       - backendRefs:
+    ##           - name: {{ include "generic-app.fullname" . | quote }}
+    ##             port: {{ .Values.service.ports.http }}
+    ## NOTE: Do NOT use Style 2 for integer fields like port — a quoted template evaluates
+    ## to a string which Kubernetes rejects. Use Style 3 for those cases.
     ##
     rules: []
     ## @param gatewayApi.httpRoute.extraRules Rendered YAML appended after generated rules (advanced)
@@ -816,6 +844,58 @@ networkPolicy:
   ##
   extraEgress: []
 
+## @section ServiceMonitor parameters
+
+## Prometheus Operator ServiceMonitor configuration.
+## Requires prometheus-operator CRDs (monitoring.coreos.com/v1) to be installed.
+## The scraped port must exist in service.ports.
+##
+serviceMonitor:
+  ## @param serviceMonitor.enabled Create a ServiceMonitor resource for Prometheus Operator
+  ##
+  enabled: false
+  ## @param serviceMonitor.port Service port name to scrape. Must exist in service.ports.
+  ##
+  port: metrics
+  ## @param serviceMonitor.path HTTP path to scrape metrics from
+  ##
+  path: /metrics
+  ## @param serviceMonitor.interval Scrape interval. Empty string inherits Prometheus Operator default.
+  ## e.g. 30s
+  ##
+  interval: ""
+  ## @param serviceMonitor.scrapeTimeout Scrape timeout. Empty string inherits Prometheus Operator default.
+  ## e.g. 10s
+  ##
+  scrapeTimeout: ""
+  ## @param serviceMonitor.labels Extra labels on the ServiceMonitor metadata.
+  ## Use this to match your Prometheus Operator serviceMonitorSelector.
+  ## e.g:
+  ## labels:
+  ##   release: prometheus
+  ##
+  labels: {}
+  ## @param serviceMonitor.annotations Annotations on the ServiceMonitor metadata
+  ##
+  annotations: {}
+  ## @param serviceMonitor.honorLabels Honor labels from the scrape target
+  ##
+  honorLabels: false
+  ## @param serviceMonitor.jobLabel Name of the Service label to use as the Prometheus job name.
+  ## Empty = use the ServiceMonitor name.
+  ##
+  jobLabel: ""
+  ## @param serviceMonitor.relabelings RelabelConfig entries applied before ingestion
+  ## ref: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+  ##
+  relabelings: []
+  ## @param serviceMonitor.scheme HTTP scheme for scraping. Valid values: http, https. Empty = use Prometheus Operator default (http).
+  ##
+  scheme: ""
+  ## @param serviceMonitor.metricRelabelings MetricRelabelConfig entries applied after scrape
+  ##
+  metricRelabelings: []
+
 ## @section Pod parameters
 
 ## @param podLabels Extra labels for pods
@@ -905,6 +985,11 @@ updateStrategy:
   #   ## For StatefulSet only: Ordinal at which the StatefulSet should be partitioned
   #   ## Default is 0, which means all pods will be updated
   #   # partition: 0
+
+## @param minReadySeconds Minimum number of seconds a newly created Pod should be ready
+## before it is considered available. Applies to Deployment and DaemonSet.
+##
+minReadySeconds: 0
 
 ## @param priorityClassName pods' priorityClassName
 ##

@@ -1,6 +1,6 @@
-{{- if eq .Values.kind "Deployment" }}
-apiVersion: {{ include "generic-app.workload.apiVersion" . }}
-kind: Deployment
+{{- if eq .Values.kind "DaemonSet" }}
+apiVersion: apps/v1
+kind: DaemonSet
 metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
@@ -9,13 +9,10 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
-  {{- if .Values.updateStrategy }}
-  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
-  {{- end }}
   minReadySeconds: {{ .Values.minReadySeconds }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels: {{- include "generic-app.selectorLabels" . | nindent 6 }}
   template:
@@ -148,7 +145,7 @@ spec:
             {{- include "generic-app.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
         {{- if .Values.sidecars }}
-        {{- include "generic-app.tplvalues.render" ( dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- include "generic-app.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
         {{- end }}
       volumes:
         {{- if .Values.persistence.enabled }}
@@ -160,4 +157,3 @@ spec:
         {{- include "generic-app.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
         {{- end }}
 {{- end }}
-

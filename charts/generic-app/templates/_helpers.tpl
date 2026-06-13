@@ -324,12 +324,41 @@ VALIDATION HELPERS
 */}}
 
 {{/*
+Warn when autoscaling is enabled for a DaemonSet (HPA does not apply).
+*/}}
+{{- define "generic-app.checkDaemonSetAutoscaling" -}}
+  {{- if and (eq .Values.kind "DaemonSet") .Values.autoscaling.enabled }}
+WARNING: autoscaling.enabled is true but kind is DaemonSet. HPA does not apply to DaemonSets and will not be created.
+  {{- end }}
+{{- end -}}
+
+{{/*
+Warn when serviceMonitor.enabled but the configured port is not in service.ports.
+*/}}
+{{- define "generic-app.checkServiceMonitorPort" -}}
+  {{- if and .Values.serviceMonitor.enabled .Values.service.enabled -}}
+    {{- $port := .Values.serviceMonitor.port -}}
+    {{- $found := false -}}
+    {{- range $name, $_ := .Values.service.ports -}}
+      {{- if eq $name $port -}}
+        {{- $found = true -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if not $found -}}
+WARNING: serviceMonitor.enabled is true but port "{{ $port }}" is not found in service.ports. The ServiceMonitor will not scrape until this port is added to service.ports.
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{/*
 Compile all warnings into a single message.
 */}}
 {{- define "generic-app.validateValues" -}}
   {{- $messages := list -}}
   {{- $messages := append $messages (include "generic-app.checkRollingTags" .) -}}
   {{- $messages := append $messages (include "generic-app.checkGatewayApiIngressConflict" .) -}}
+  {{- $messages := append $messages (include "generic-app.checkDaemonSetAutoscaling" .) -}}
+  {{- $messages := append $messages (include "generic-app.checkServiceMonitorPort" .) -}}
   {{- $messages := without $messages "" -}}
   {{- $message := join "\n" $messages -}}
 

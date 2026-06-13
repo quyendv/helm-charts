@@ -40,7 +40,7 @@ spec:
   {{- end }}
   rules:
     {{- if .Values.gatewayApi.httpRoute.rules }}
-    {{- toYaml .Values.gatewayApi.httpRoute.rules | nindent 4 }}
+    {{- include "generic-app.tplvalues.render" (dict "value" .Values.gatewayApi.httpRoute.rules "context" $) | nindent 4 }}
     {{- else }}
     - matches:
         - path:

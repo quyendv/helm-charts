@@ -5,6 +5,20 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-06-13
+
+### Added
+
+- **`containerPorts`**: Optional map to declare container ports independently of `service.ports`. Falls back to `service.ports` when not set (backward compatible).
+- **`DaemonSet` workload kind**: `kind: DaemonSet` is now supported. Supports `updateStrategy`, `minReadySeconds`, and all pod-level options. HPA is suppressed for DaemonSet with a validation warning.
+- **`minReadySeconds`**: New parameter that applies to Deployment and DaemonSet workloads.
+- **`ServiceMonitor` template**: Built-in Prometheus Operator integration via `serviceMonitor.enabled`. Configurable fields: `port`, `path`, `interval`, `scrapeTimeout`, `scheme`, `honorLabels`, `jobLabel`, `labels`, `annotations`, `relabelings`, `metricRelabelings`. Includes port validation warning.
+
+### Fixed
+
+- **StatefulSet spurious `emptyDir` volume**: A `data` volume with `emptyDir` was created when `persistence.enabled: false` even though no container mounted it. The volume is no longer created when persistence is disabled.
+- **`gatewayApi.httpRoute.rules` template evaluation**: Rules were rendered via `toYaml` which does not evaluate Helm template expressions. Now rendered via `tplvalues.render` — quoted template expressions in string fields (Style 2) and block-string rules (Style 3) are fully evaluated.
+
 ## [1.8.0] - 2026-04-26
 
 ### Added
