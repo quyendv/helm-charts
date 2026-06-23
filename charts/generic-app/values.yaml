@@ -80,10 +80,8 @@ command: []
 ## @param args Override default container args (useful when using custom images)
 ##
 args: []
-## @param containerPorts Map of container port names to port numbers. When set, these ports
-## are added to the container spec independently of service.ports, allowing ports that are
-## not exposed via the Service (e.g. metrics, admin). When empty, falls back to service.ports
-## for backward compatibility.
+## @param containerPorts Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty
+## Lets you expose container ports that are not published via the Service (e.g. metrics, admin).
 ## e.g:
 ## containerPorts:
 ##   http: 8080
@@ -124,41 +122,66 @@ extraEnvVarsSecrets: []
 
 ## @section Security parameters
 
-## Container Security Context
-## Defines privilege and access control settings for containers
+## Container Security Context (applies per-container, overrides pod-level for the same field)
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+## The commented block below is a hardened baseline aligned with the "restricted"
+## Pod Security Standard — uncomment and adjust the fields you need.
 ##
 ## @param containerSecurityContext.enabled Enable container security context
-## @param containerSecurityContext.runAsUser User ID to run the container (non-root user)
-## @param containerSecurityContext.runAsNonRoot Force container to run as non-root user
-## @param containerSecurityContext.readOnlyRootFilesystem Mount root filesystem as read-only
-## @param containerSecurityContext.allowPrivilegeEscalation Prevent privilege escalation
+## @extra containerSecurityContext.runAsUser UID to run the container process as. Any non-zero integer; avoid 0 (root)
+## @extra containerSecurityContext.runAsGroup Primary GID for the container process. Any integer (commonly matches runAsUser)
+## @extra containerSecurityContext.runAsNonRoot Reject the container at startup if the image would run as UID 0. true / false
+## @extra containerSecurityContext.readOnlyRootFilesystem Mount the container root filesystem read-only (use emptyDir/volumes for writable paths). true / false
+## @extra containerSecurityContext.allowPrivilegeEscalation Allow a process to gain more privileges than its parent (setuid binaries, sudo). Keep false. true / false
+## @extra containerSecurityContext.privileged Give the container near-host privileges. Almost never needed. true / false
+## @extra containerSecurityContext.capabilities [object] Linux capabilities to drop/add (drop ["ALL"] then add only what is required, e.g. NET_BIND_SERVICE)
+## @extra containerSecurityContext.seccompProfile [object] Seccomp profile. type: RuntimeDefault / Localhost / Unconfined (Localhost also needs localhostProfile)
 ##
 containerSecurityContext:
   enabled: false
-  # runAsUser: 1001
-  # runAsNonRoot: true
-  # readOnlyRootFilesystem: false
-  # allowPrivilegeEscalation: false
+  # runAsUser: 1001               # UID the process runs as (non-root)
+  # runAsGroup: 1001              # primary GID the process runs as
+  # runAsNonRoot: true           # fail the container if it tries to run as root (UID 0)
+  # readOnlyRootFilesystem: true # make "/" read-only; mount emptyDir for /tmp etc. if the app writes
+  # allowPrivilegeEscalation: false  # block setuid/sudo style privilege gains
+  # privileged: false            # never grant host-level privileges unless absolutely required
   # capabilities:
   #   drop:
-  #     - ALL
+  #     - ALL                     # drop every Linux capability...
+  #   add:
+  #     - NET_BIND_SERVICE        # ...then re-add only what you need (e.g. bind ports < 1024)
+  # seccompProfile:
+  #   type: RuntimeDefault        # use the container runtime's default seccomp filter
 
-## Pod Security Context
-## Defines pod-level security settings (applies to all containers in pod)
+## Pod Security Context (applies to all containers in the pod; controls volume ownership and pod-wide settings)
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+## Note: fsGroup / supplementalGroups / sysctls are pod-level only and have no
+## container-level equivalent above.
 ##
 ## @param podSecurityContext.enabled Enable pod security context
-## @param podSecurityContext.fsGroup Group ID for filesystem ownership
+## @extra podSecurityContext.runAsUser Default UID for all containers (a container-level runAsUser overrides this). Non-zero integer
+## @extra podSecurityContext.runAsGroup Default primary GID for all containers. Integer
+## @extra podSecurityContext.runAsNonRoot Require all containers to run as non-root. true / false
+## @extra podSecurityContext.fsGroup Supplemental GID that owns mounted volumes; the kubelet chowns volume contents to this GID. Integer
+## @extra podSecurityContext.fsGroupChangePolicy When to apply fsGroup ownership to volumes. Always / OnRootMismatch (faster on large volumes)
+## @extra podSecurityContext.supplementalGroups [array] Extra GIDs added to the first process of each container. List of integers
+## @extra podSecurityContext.seccompProfile [object] Pod-wide seccomp profile. type: RuntimeDefault / Localhost / Unconfined
+## @extra podSecurityContext.sysctls [array] Namespaced kernel sysctls to set (name/value pairs); only "safe" sysctls unless the node allows more
 ##
 podSecurityContext:
   enabled: false
-  # runAsNonRoot: true
-  # runAsUser: 1001
-  # runAsGroup: 1001
-  # fsGroup: 1001
+  # runAsUser: 1001              # default UID for every container in the pod
+  # runAsGroup: 1001             # default primary GID for every container
+  # runAsNonRoot: true          # require all containers to be non-root
+  # fsGroup: 1001                # GID that owns mounted volumes (fixes "permission denied" on PVCs)
+  # fsGroupChangePolicy: OnRootMismatch  # only re-chown when the top-level dir GID differs (avoids slow recursive chown)
+  # supplementalGroups:
+  #   - 2000                     # extra GIDs the process belongs to (e.g. shared NFS group)
   # seccompProfile:
-  #   type: RuntimeDefault
+  #   type: RuntimeDefault       # apply the runtime default seccomp filter to all containers
+  # sysctls:
+  #   - name: net.core.somaxconn # example: raise the listen backlog
+  #     value: "1024"
 
 ## @section Service parameters
 
@@ -171,11 +194,11 @@ service:
   ## @param service.type Service type
   ##
   type: ClusterIP
-  ## @param service.ports Service ports
+  ## @param service.ports [object] Service ports
   ##
   ports:
     http: 80
-  ## @param service.nodePorts Node ports to expose
+  ## @param service.nodePorts [object] Node ports to expose
   ## NOTE: choose port between <30000-32767>
   ##
   nodePorts:
@@ -253,7 +276,7 @@ certManager:
     ## ACME challenge solvers
     ##
     solvers:
-      ## @param certManager.acme.solvers HTTP01 solver configuration
+      ## @param certManager.acme.solvers [array] HTTP01 solver configuration
       ## e.g (Ingress):
       ## - http01:
       ##     ingress:
@@ -297,7 +320,7 @@ certManager:
     ## Vault authentication
     ##
     auth:
-      ## @param certManager.vault.auth.tokenSecretRef Token secret reference
+      ## @param certManager.vault.auth.tokenSecretRef [object] Token secret reference
       ##
       tokenSecretRef:
         name: ""
@@ -427,7 +450,7 @@ gatewayApi:
     ## @param gatewayApi.httpRoute.hostnames HTTPRoute spec.hostnames (SNI / Host header routing)
     ##
     hostnames: []
-    ## @param gatewayApi.httpRoute.path Default path match when rules is empty (PathPrefix)
+    ## @param gatewayApi.httpRoute.path [object] Default path match when rules is empty (PathPrefix)
     ##
     path:
       type: PathPrefix
@@ -480,7 +503,7 @@ gatewayApi:
     ## @param gatewayApi.httpRedirect.hostnames Redirect route hostnames (defaults to effective route hostnames when empty)
     ##
     hostnames: []
-    ## @param gatewayApi.httpRedirect.path Match path for redirect route
+    ## @param gatewayApi.httpRedirect.path [object] Match path for redirect route
     ##
     path:
       type: PathPrefix
@@ -507,7 +530,7 @@ gatewayApi:
     ## @param gatewayApi.certificate.secretName Kubernetes Secret name for TLS material (defaults to first hostname + "-tls", else fullname + "-gateway-tls")
     ##
     secretName: ""
-    ## @param gatewayApi.certificate.issuerRef cert-manager issuer reference (production: ClusterIssuer)
+    ## @param gatewayApi.certificate.issuerRef [object] cert-manager issuer reference (production: ClusterIssuer)
     ##
     issuerRef:
       group: cert-manager.io
@@ -570,6 +593,7 @@ resources:
 ## Configure Pods' liveness, readiness and startup probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
 ## @param livenessProbe.enabled Enable livenessProbe on containers
+## @param livenessProbe.httpGet [object] HTTP GET probe configuration (path and port)
 ## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
 ## @param livenessProbe.periodSeconds Period seconds for livenessProbe
 ## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
@@ -588,6 +612,7 @@ livenessProbe:
   successThreshold: 1
 
 ## @param readinessProbe.enabled Enable readinessProbe on containers
+## @param readinessProbe.httpGet [object] HTTP GET probe configuration (path and port)
 ## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
 ## @param readinessProbe.periodSeconds Period seconds for readinessProbe
 ## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
@@ -606,6 +631,7 @@ readinessProbe:
   successThreshold: 1
 
 ## @param startupProbe.enabled Enable startupProbe on containers
+## @param startupProbe.httpGet [object] HTTP GET probe configuration (path and port)
 ## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
 ## @param startupProbe.periodSeconds Period seconds for startupProbe
 ## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
@@ -959,9 +985,9 @@ nodeSelector: {}
 tolerations: []
 
 ## @param updateStrategy.type statefulset/deployment strategy type
-## @param updateStrategy.rollingUpdate.maxSurge Maximum number of pods that can be created over desired replicas (Deployment only)
-## @param updateStrategy.rollingUpdate.maxUnavailable Maximum number of pods that can be unavailable during update
-## @param updateStrategy.rollingUpdate.partition Ordinal at which StatefulSet should be partitioned (StatefulSet only)
+## @extra updateStrategy.rollingUpdate.maxSurge Maximum number of pods that can be created over desired replicas (Deployment only). Uncomment under `updateStrategy.rollingUpdate` to use.
+## @extra updateStrategy.rollingUpdate.maxUnavailable Maximum number of pods that can be unavailable during update. Uncomment under `updateStrategy.rollingUpdate` to use.
+## @extra updateStrategy.rollingUpdate.partition Ordinal at which StatefulSet should be partitioned (StatefulSet only). Uncomment under `updateStrategy.rollingUpdate` to use.
 ## ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
 ## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
 ##
@@ -986,8 +1012,7 @@ updateStrategy:
   #   ## Default is 0, which means all pods will be updated
   #   # partition: 0
 
-## @param minReadySeconds Minimum number of seconds a newly created Pod should be ready
-## before it is considered available. Applies to Deployment and DaemonSet.
+## @param minReadySeconds Min seconds a new Pod must be ready before considered available (Deployment and DaemonSet)
 ##
 minReadySeconds: 0
 

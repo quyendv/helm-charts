@@ -74,131 +74,246 @@ To uninstall/delete the `my-app` deployment:
 helm uninstall my-app
 ```
 
-## Configuration
+## Parameters
 
-The following table lists the configurable parameters and their default values.
+### Global parameters
 
-### Global Parameters
+| Name                      | Description                                     | Value |
+| ------------------------- | ----------------------------------------------- | ----- |
+| `global.imageRegistry`    | Global Docker image registry                    | `""`  |
+| `global.imagePullSecrets` | Global Docker registry secret names as an array | `[]`  |
+| `global.storageClass`     | Global StorageClass for Persistent Volume(s)    | `""`  |
 
-| Parameter                 | Description                                  | Default |
-| ------------------------- | -------------------------------------------- | ------- |
-| `global.imageRegistry`    | Global Docker image registry                 | `""`    |
-| `global.imagePullSecrets` | Global Docker registry secret names          | `[]`    |
-| `global.storageClass`     | Global StorageClass for Persistent Volume(s) | `""`    |
+### Common parameters
 
-### Common Parameters
+| Name                | Description                                        | Value |
+| ------------------- | -------------------------------------------------- | ----- |
+| `nameOverride`      | String to partially override common.names.fullname | `""`  |
+| `fullnameOverride`  | String to fully override common.names.fullname     | `""`  |
+| `namespaceOverride` | String to fully override common.names.namespace    | `""`  |
+| `commonLabels`      | Labels to add to all deployed objects              | `{}`  |
+| `commonAnnotations` | Annotations to add to all deployed objects         | `{}`  |
 
-| Parameter           | Description                                | Default |
-| ------------------- | ------------------------------------------ | ------- |
-| `nameOverride`      | String to partially override the fullname  | `""`    |
-| `fullnameOverride`  | String to fully override the fullname      | `""`    |
-| `namespaceOverride` | String to override the namespace           | `""`    |
-| `commonLabels`      | Labels to add to all deployed objects      | `{}`    |
-| `commonAnnotations` | Annotations to add to all deployed objects | `{}`    |
+### Application parameters
 
-### Application Parameters
+| Name                     | Description                                                                                                | Value          |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------- | -------------- |
+| `replicaCount`           | Number of replicas to deploy                                                                               | `1`            |
+| `kind`                   | Workload kind (Deployment, StatefulSet, or DaemonSet)                                                      | `Deployment`   |
+| `image.registry`         | Application image registry                                                                                 | `docker.io`    |
+| `image.repository`       | Application image repository                                                                               | `nginx`        |
+| `image.tag`              | Application image tag (immutable tags are recommended)                                                     | `1.25.3`       |
+| `image.pullPolicy`       | Application image pull policy                                                                              | `IfNotPresent` |
+| `image.pullSecrets`      | Application image pull secrets                                                                             | `[]`           |
+| `command`                | Override default container command (useful when using custom images)                                       | `[]`           |
+| `args`                   | Override default container args (useful when using custom images)                                          | `[]`           |
+| `containerPorts`         | Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty | `{}`           |
+| `extraEnvVars`           | Array with extra environment variables to add                                                              | `[]`           |
+| `extraEnvVarsConfigMaps` | List of existing ConfigMaps to load as environment variables                                               | `[]`           |
+| `extraEnvVarsSecrets`    | List of existing Secrets to load as environment variables                                                  | `[]`           |
 
-| Parameter           | Description                               | Default        |
-| ------------------- | ----------------------------------------- | -------------- |
-| `replicaCount`      | Number of replicas                        | `1`            |
-| `kind`              | Workload kind (Deployment or StatefulSet) | `Deployment`   |
-| `image.registry`    | Image registry                            | `docker.io`    |
-| `image.repository`  | Image repository                          | `nginx`        |
-| `image.tag`         | Image tag                                 | `1.25.3`       |
-| `image.pullPolicy`  | Image pull policy                         | `IfNotPresent` |
-| `image.pullSecrets` | Image pull secrets                        | `[]`           |
+### Security parameters
 
-### Environment Variables Parameters
+| Name                                                | Description                                                                                               | Value   |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------- |
+| `containerSecurityContext.enabled`                  | Enable container security context                                                                         | `false` |
+| `containerSecurityContext.runAsUser`                | UID to run the container process as. Any non-zero integer; avoid 0 (root)                                 |         |
+| `containerSecurityContext.runAsGroup`               | Primary GID for the container process. Any integer (commonly matches runAsUser)                           |         |
+| `containerSecurityContext.runAsNonRoot`             | Reject the container at startup if the image would run as UID 0. true / false                             |         |
+| `containerSecurityContext.readOnlyRootFilesystem`   | Mount the container root filesystem read-only (use emptyDir/volumes for writable paths). true / false     |         |
+| `containerSecurityContext.allowPrivilegeEscalation` | Allow a process to gain more privileges than its parent (setuid binaries, sudo). Keep false. true / false |         |
+| `containerSecurityContext.privileged`               | Give the container near-host privileges. Almost never needed. true / false                                |         |
+| `containerSecurityContext.capabilities`             | Linux capabilities to drop/add (drop ["ALL"] then add only what is required, e.g. NET_BIND_SERVICE)       |         |
+| `containerSecurityContext.seccompProfile`           | Seccomp profile. type: RuntimeDefault / Localhost / Unconfined (Localhost also needs localhostProfile)    |         |
+| `podSecurityContext.enabled`                        | Enable pod security context                                                                               | `false` |
+| `podSecurityContext.runAsUser`                      | Default UID for all containers (a container-level runAsUser overrides this). Non-zero integer             |         |
+| `podSecurityContext.runAsGroup`                     | Default primary GID for all containers. Integer                                                           |         |
+| `podSecurityContext.runAsNonRoot`                   | Require all containers to run as non-root. true / false                                                   |         |
+| `podSecurityContext.fsGroup`                        | Supplemental GID that owns mounted volumes; the kubelet chowns volume contents to this GID. Integer       |         |
+| `podSecurityContext.fsGroupChangePolicy`            | When to apply fsGroup ownership to volumes. Always / OnRootMismatch (faster on large volumes)             |         |
+| `podSecurityContext.supplementalGroups`             | Extra GIDs added to the first process of each container. List of integers                                 |         |
+| `podSecurityContext.seccompProfile`                 | Pod-wide seccomp profile. type: RuntimeDefault / Localhost / Unconfined                                   |         |
+| `podSecurityContext.sysctls`                        | Namespaced kernel sysctls to set (name/value pairs); only "safe" sysctls unless the node allows more      |         |
 
-| Parameter                | Description                            | Default |
-| ------------------------ | -------------------------------------- | ------- |
-| `extraEnvVars`           | Array of extra environment variables   | `[]`    |
-| `extraEnvVarsConfigMaps` | List of ConfigMaps to load as env vars | `[]`    |
-| `extraEnvVarsSecrets`    | List of Secrets to load as env vars    | `[]`    |
+### Service parameters
 
-### Service Parameters
+| Name                               | Description                                                                | Value       |
+| ---------------------------------- | -------------------------------------------------------------------------- | ----------- |
+| `service.enabled`                  | Enable service creation                                                    | `true`      |
+| `service.type`                     | Service type                                                               | `ClusterIP` |
+| `service.ports`                    | Service ports                                                              | `{}`        |
+| `service.nodePorts`                | Node ports to expose                                                       | `{}`        |
+| `service.clusterIP`                | Service Cluster IP                                                         | `""`        |
+| `service.loadBalancerIP`           | Service Load Balancer IP                                                   | `""`        |
+| `service.loadBalancerSourceRanges` | Service Load Balancer sources                                              | `[]`        |
+| `service.externalTrafficPolicy`    | Service external traffic policy                                            | `Cluster`   |
+| `service.annotations`              | Additional custom annotations for Service                                  | `{}`        |
+| `service.extraPorts`               | Extra ports to expose in Service (normally used with the `sidecars` value) | `[]`        |
+| `service.sessionAffinity`          | Session Affinity for Kubernetes service, can be "None" or "ClientIP"       | `None`      |
+| `service.sessionAffinityConfig`    | Additional settings for the sessionAffinity                                | `{}`        |
 
-| Parameter             | Description             | Default      |
-| --------------------- | ----------------------- | ------------ |
-| `service.type`        | Kubernetes Service type | `ClusterIP`  |
-| `service.ports`       | Service ports           | `{http: 80}` |
-| `service.annotations` | Service annotations     | `{}`         |
+### Cert-Manager parameters
 
-### Cert-Manager Parameters
+| Name                                    | Description                                          | Value                                            |
+| --------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| `certManager.enabled`                   | Enable cert-manager issuer creation                  | `false`                                          |
+| `certManager.issuerType`                | Type of issuer to create (Issuer or ClusterIssuer)   | `ClusterIssuer`                                  |
+| `certManager.issuerName`                | Name of the issuer (if empty, will use release name) | `""`                                             |
+| `certManager.acme.enabled`              | Enable ACME issuer (Let's Encrypt)                   | `true`                                           |
+| `certManager.acme.server`               | ACME server URL                                      | `https://acme-v02.api.letsencrypt.org/directory` |
+| `certManager.acme.email`                | Email address for ACME registration                  | `""`                                             |
+| `certManager.acme.privateKeySecretRef`  | Secret name to store ACME account private key        | `""`                                             |
+| `certManager.acme.solvers`              | HTTP01 solver configuration                          | `[]`                                             |
+| `certManager.ca.enabled`                | Enable CA issuer                                     | `false`                                          |
+| `certManager.ca.secretName`             | Secret name containing CA certificate and key        | `""`                                             |
+| `certManager.vault.enabled`             | Enable Vault issuer                                  | `false`                                          |
+| `certManager.vault.server`              | Vault server URL                                     | `""`                                             |
+| `certManager.vault.path`                | Vault PKI path                                       | `""`                                             |
+| `certManager.vault.caBundle`            | CA bundle for Vault server                           | `""`                                             |
+| `certManager.vault.auth.tokenSecretRef` | Token secret reference                               | `{}`                                             |
 
-| Parameter                   | Description                           | Default         |
-| --------------------------- | ------------------------------------- | --------------- |
-| `certManager.enabled`       | Enable cert-manager issuer creation   | `false`         |
-| `certManager.issuerType`    | Type of issuer (Issuer/ClusterIssuer) | `ClusterIssuer` |
-| `certManager.issuerName`    | Name of the issuer                    | `""`            |
-| `certManager.acme.enabled`  | Enable ACME issuer (Let's Encrypt)    | `true`          |
-| `certManager.acme.server`   | ACME server URL                       | Production      |
-| `certManager.acme.email`    | Email for ACME registration           | `""`            |
-| `certManager.acme.solvers`  | ACME challenge solvers                | HTTP01 nginx    |
-| `certManager.ca.enabled`    | Enable CA issuer                      | `false`         |
-| `certManager.ca.secretName` | Secret containing CA certificate      | `""`            |
-| `certManager.vault.enabled` | Enable Vault issuer                   | `false`         |
-| `certManager.vault.server`  | Vault server URL                      | `""`            |
+### Ingress parameters
 
-### Ingress Parameters
-
-| Parameter                  | Description                           | Default     |
-| -------------------------- | ------------------------------------- | ----------- |
-| `ingress.enabled`          | Enable ingress controller resource    | `false`     |
-| `ingress.ingressClassName` | IngressClass name                     | `""`        |
-| `ingress.hostname`         | Default host for the ingress resource | `app.local` |
-| `ingress.path`             | Default path for the ingress resource | `/`         |
-| `ingress.tls`              | Enable TLS configuration              | `false`     |
-| `ingress.annotations`      | Ingress annotations                   | `{}`        |
+| Name                       | Description                                                                                                                      | Value                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `ingress.enabled`          | Enable ingress record generation                                                                                                 | `false`                  |
+| `ingress.ingressClassName` | IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)                                                    | `""`                     |
+| `ingress.pathType`         | Ingress path type                                                                                                                | `ImplementationSpecific` |
+| `ingress.apiVersion`       | Force Ingress API version (automatically detected if not set)                                                                    | `""`                     |
+| `ingress.hostname`         | Default host for the ingress record                                                                                              | `app.local`              |
+| `ingress.path`             | Default path for the ingress record                                                                                              | `/`                      |
+| `ingress.annotations`      | Additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations. | `{}`                     |
+| `ingress.tls`              | Enable TLS configuration for the host defined at `ingress.hostname` parameter                                                    | `false`                  |
+| `ingress.extraHosts`       | An array with additional hostname(s) to be covered with the ingress record                                                       | `[]`                     |
+| `ingress.extraPaths`       | An array with additional arbitrary paths that may need to be added to the ingress under the main host                            | `[]`                     |
+| `ingress.extraTls`         | TLS configuration for additional hostname(s) to be covered with this ingress record                                              | `[]`                     |
+| `ingress.extraRules`       | Additional rules to be covered with this ingress record                                                                          | `[]`                     |
 
 ### Gateway API parameters
 
-| Parameter                                  | Description                                                         | Default |
-| ------------------------------------------ | ------------------------------------------------------------------- | ------- |
-| `gatewayApi.enabled`                       | Create `HTTPRoute` (and optional `Certificate`)                     | `false` |
-| `gatewayApi.apiVersion`                    | HTTPRoute API version (empty = `gateway.networking.k8s.io/v1`)     | `""`    |
-| `gatewayApi.hostname`                      | Convenience hostname (merged into route/cert hostnames)            | `""`    |
-| `gatewayApi.httpRoute.parentRefs`          | **Required** when enabled: attachment to existing Gateway(s)        | `[]`    |
-| `gatewayApi.httpRoute.hostnames`           | `HTTPRoute` `spec.hostnames`                                       | `[]`    |
-| `gatewayApi.httpRoute.rules`               | Full `spec.rules`; if empty, chart generates path → Service rule   | `[]`    |
-| `gatewayApi.httpRedirect.enabled`          | Create extra HTTPRoute with `RequestRedirect` (HTTP → HTTPS)        | `false` |
-| `gatewayApi.httpRedirect.parentRefs`       | ParentRefs for redirect route (typically HTTP listener)             | `[]`    |
-| `gatewayApi.httpRedirect.statusCode`       | Redirect status code for `RequestRedirect`                          | `301`   |
-| `gatewayApi.certificate.enabled`           | Create cert-manager `Certificate` for TLS material                  | `false` |
-| `gatewayApi.certificate.issuerRef.name`    | Issuer / ClusterIssuer name (required if certificate enabled)       | `""`    |
+| Name                                                          | Description                                                                                                   | Value   |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------- |
+| `gatewayApi.enabled`                                          | Create HTTPRoute (and optional Certificate) for Gateway API                                                   | `false` |
+| `gatewayApi.apiVersion`                                       | HTTPRoute API version (leave empty for gateway.networking.k8s.io/v1)                                          | `""`    |
+| `gatewayApi.hostname`                                         | Convenience hostname (appended to httpRoute.hostnames for route + cert)                                       | `""`    |
+| `gatewayApi.httpRoute.name`                                   | HTTPRoute resource name (defaults to release fullname)                                                        | `""`    |
+| `gatewayApi.httpRoute.annotations`                            | HTTPRoute annotations                                                                                         | `{}`    |
+| `gatewayApi.httpRoute.labels`                                 | Extra labels for HTTPRoute                                                                                    | `{}`    |
+| `gatewayApi.httpRoute.parentRefs`                             | Attach to existing Gateway(s) / GatewayClass via standard parentRefs                                          | `[]`    |
+| `gatewayApi.httpRoute.hostnames`                              | HTTPRoute spec.hostnames (SNI / Host header routing)                                                          | `[]`    |
+| `gatewayApi.httpRoute.path`                                   | Default path match when rules is empty (PathPrefix)                                                           | `{}`    |
+| `gatewayApi.httpRoute.rules`                                  | Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule).                                | `[]`    |
+| `gatewayApi.httpRoute.extraRules`                             | Rendered YAML appended after generated rules (advanced)                                                       | `""`    |
+| `gatewayApi.httpRedirect.enabled`                             | Create an extra HTTPRoute that redirects requests to HTTPS                                                    | `false` |
+| `gatewayApi.httpRedirect.name`                                | Redirect HTTPRoute resource name (defaults to fullname + "-http-redirect")                                    | `""`    |
+| `gatewayApi.httpRedirect.annotations`                         | Redirect HTTPRoute annotations                                                                                | `{}`    |
+| `gatewayApi.httpRedirect.labels`                              | Extra labels for redirect HTTPRoute                                                                           | `{}`    |
+| `gatewayApi.httpRedirect.parentRefs`                          | ParentRefs for redirect route (typically HTTP listener, e.g. sectionName: http)                               | `[]`    |
+| `gatewayApi.httpRedirect.hostnames`                           | Redirect route hostnames (defaults to effective route hostnames when empty)                                   | `[]`    |
+| `gatewayApi.httpRedirect.path`                                | Match path for redirect route                                                                                 | `{}`    |
+| `gatewayApi.httpRedirect.scheme`                              | Redirect target scheme                                                                                        | `https` |
+| `gatewayApi.httpRedirect.statusCode`                          | Redirect status code                                                                                          | `301`   |
+| `gatewayApi.certificate.enabled`                              | Create cert-manager.io/v1 Certificate                                                                         | `false` |
+| `gatewayApi.certificate.name`                                 | Certificate resource name (defaults to fullname + "-gateway-tls")                                             | `""`    |
+| `gatewayApi.certificate.annotations`                          | Certificate annotations                                                                                       | `{}`    |
+| `gatewayApi.certificate.secretName`                           | Kubernetes Secret name for TLS material (defaults to first hostname + "-tls", else fullname + "-gateway-tls") | `""`    |
+| `gatewayApi.certificate.issuerRef`                            | cert-manager issuer reference (production: ClusterIssuer)                                                     | `{}`    |
+| `gatewayApi.certificate.dnsNames`                             | Certificate spec.dnsNames (defaults to effective HTTPRoute hostnames)                                         | `[]`    |
+| `gatewayApi.certificate.duration`                             | Optional certificate duration (e.g. 2160h)                                                                    | `""`    |
+| `gatewayApi.certificate.renewBefore`                          | Optional renew before (e.g. 360h)                                                                             | `""`    |
+| `gatewayApi.nginxGatewayFabric.enabled`                       | Turn on NGF policy/snippet resources (requires gatewayApi.enabled)                                            | `false` |
+| `gatewayApi.nginxGatewayFabric.clientSettings.bodyMaxSize`    | Maps to client_max_body_size (e.g. 1024m). Empty = omit policy.                                               | `""`    |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.connect` | e.g. 600s                                                                                                     | `""`    |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.read`    | e.g. 600s                                                                                                     | `""`    |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.send`    | e.g. 600s                                                                                                     | `""`    |
+| `gatewayApi.nginxGatewayFabric.snippets.extra`                | List of { context, value } maps (NGF SnippetsFilter item shape)                                               | `[]`    |
 
-#### NGINX Gateway Fabric (optional presets)
+### Resources parameters
 
-When `gatewayApi.nginxGatewayFabric.enabled` is `true` (requires `gatewayApi.enabled`), the chart can render NGF resources alongside the single chart-managed `HTTPRoute`:
+| Name                                 | Description                                                            | Value   |
+| ------------------------------------ | ---------------------------------------------------------------------- | ------- |
+| `resources.limits`                   | The resources limits for the containers                                | `{}`    |
+| `resources.requests`                 | The requested resources for the containers                             | `{}`    |
+| `livenessProbe.enabled`              | Enable livenessProbe on containers                                     | `false` |
+| `livenessProbe.httpGet`              | HTTP GET probe configuration (path and port)                           | `{}`    |
+| `livenessProbe.initialDelaySeconds`  | Initial delay seconds for livenessProbe                                | `30`    |
+| `livenessProbe.periodSeconds`        | Period seconds for livenessProbe                                       | `10`    |
+| `livenessProbe.timeoutSeconds`       | Timeout seconds for livenessProbe                                      | `5`     |
+| `livenessProbe.failureThreshold`     | Failure threshold for livenessProbe                                    | `6`     |
+| `livenessProbe.successThreshold`     | Success threshold for livenessProbe                                    | `1`     |
+| `readinessProbe.enabled`             | Enable readinessProbe on containers                                    | `false` |
+| `readinessProbe.httpGet`             | HTTP GET probe configuration (path and port)                           | `{}`    |
+| `readinessProbe.initialDelaySeconds` | Initial delay seconds for readinessProbe                               | `5`     |
+| `readinessProbe.periodSeconds`       | Period seconds for readinessProbe                                      | `10`    |
+| `readinessProbe.timeoutSeconds`      | Timeout seconds for readinessProbe                                     | `5`     |
+| `readinessProbe.failureThreshold`    | Failure threshold for readinessProbe                                   | `6`     |
+| `readinessProbe.successThreshold`    | Success threshold for readinessProbe                                   | `1`     |
+| `startupProbe.enabled`               | Enable startupProbe on containers                                      | `false` |
+| `startupProbe.httpGet`               | HTTP GET probe configuration (path and port)                           | `{}`    |
+| `startupProbe.initialDelaySeconds`   | Initial delay seconds for startupProbe                                 | `0`     |
+| `startupProbe.periodSeconds`         | Period seconds for startupProbe                                        | `10`    |
+| `startupProbe.timeoutSeconds`        | Timeout seconds for startupProbe                                       | `5`     |
+| `startupProbe.failureThreshold`      | Failure threshold for startupProbe                                     | `30`    |
+| `startupProbe.successThreshold`      | Success threshold for startupProbe                                     | `1`     |
+| `customLivenessProbe`                | Custom livenessProbe that overrides the default one                    | `{}`    |
+| `customReadinessProbe`               | Custom readinessProbe that overrides the default one                   | `{}`    |
+| `customStartupProbe`                 | Custom startupProbe that overrides the default one                     | `{}`    |
+| `lifecycleHooks`                     | for the container(s) to automate configuration before or after startup | `{}`    |
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `gatewayApi.nginxGatewayFabric.enabled` | Create `ClientSettingsPolicy` / `SnippetsFilter` when configured | `false` |
-| `gatewayApi.nginxGatewayFabric.clientSettings.bodyMaxSize` | `ClientSettingsPolicy` `body.maxSize` (e.g. `1024m`). Empty = omit policy. | `""` |
-| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.connect` | Snippet: `proxy_connect_timeout` (e.g. `600s`). Empty = omit directive. | `""` |
-| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.read` | Snippet: `proxy_read_timeout` | `""` |
-| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.send` | Snippet: `proxy_send_timeout` | `""` |
-| `gatewayApi.nginxGatewayFabric.snippets.extra` | Extra `SnippetsFilter.spec.snippets` items (`context` + `value`) merged into one release-scoped `SnippetsFilter` | `[]` |
+### Persistence parameters
 
-**Behavior notes**
+| Name                        | Description                                             | Value               |
+| --------------------------- | ------------------------------------------------------- | ------------------- |
+| `persistence.enabled`       | Enable persistence using Persistent Volume Claims       | `false`             |
+| `persistence.storageClass`  | Storage class of backing PVC                            | `""`                |
+| `persistence.annotations`   | Persistent Volume Claim annotations                     | `{}`                |
+| `persistence.accessModes`   | Persistent Volume Access Modes                          | `["ReadWriteOnce"]` |
+| `persistence.size`          | Size of data volume                                     | `8Gi`               |
+| `persistence.existingClaim` | The name of an existing PVC to use for persistence      | `""`                |
+| `persistence.selector`      | Selector to match an existing Persistent Volume for PVC | `{}`                |
+| `persistence.dataSource`    | Custom PVC data source                                  | `{}`                |
+| `persistence.mountPath`     | The path the volume will be mounted at                  | `/data`             |
+| `persistence.subPath`       | The subdirectory of the volume to mount to              | `""`                |
 
-- Cluster must provide `gateway.nginx.org` CRDs (`ClientSettingsPolicy`, `SnippetsFilter`). Snippets require the NGF control plane to be installed with **snippets enabled** (Helm value `nginxGateway.snippets.enable: true`).
-- One shared `SnippetsFilter` per release is named `{{ release fullname }}-ngf-snippets` (63-char safe). The chart injects a single `HTTPRoute` `ExtensionRef` to it only when using the **generated default rule** (`gatewayApi.httpRoute.rules` empty). If you set full `gatewayApi.httpRoute.rules` yourself, add the `ExtensionRef` filter in your rules or use `extraDeploy`.
-- For HTTP → HTTPS migration, you can enable `gatewayApi.httpRedirect` to create an additional redirect-only `HTTPRoute` attached to your HTTP listener.
+### Volume Permissions parameters
 
-### Persistence Parameters
+| Name                | Description                                                                   | Value |
+| ------------------- | ----------------------------------------------------------------------------- | ----- |
+| `initContainers`    | Add additional init containers to the pods                                    | `[]`  |
+| `sidecars`          | Add additional sidecar containers to the pods                                 | `[]`  |
+| `extraVolumes`      | Optionally specify extra list of additional volumes for the pods              | `[]`  |
+| `extraVolumeMounts` | Optionally specify extra list of additional volumeMounts for the container(s) | `[]`  |
 
-| Parameter                  | Description                  | Default           |
-| -------------------------- | ---------------------------- | ----------------- |
-| `persistence.enabled`      | Enable persistence using PVC | `false`           |
-| `persistence.storageClass` | PVC Storage Class            | `""`              |
-| `persistence.accessModes`  | PVC Access Mode              | `[ReadWriteOnce]` |
-| `persistence.size`         | PVC Storage Request          | `8Gi`             |
-| `persistence.mountPath`    | Path to mount the volume at  | `/data`           |
+### ConfigMap parameters
 
-### Autoscaling Parameters
+| Name                     | Description           | Value   |
+| ------------------------ | --------------------- | ------- |
+| `configMaps.enabled`     | Enable ConfigMaps     | `false` |
+| `configMaps.data`        | ConfigMap data        | `{}`    |
+| `configMaps.annotations` | ConfigMap annotations | `{}`    |
 
-| Parameter                  | Description                          | Default |
+### Secret parameters
+
+| Name                  | Description        | Value   |
+| --------------------- | ------------------ | ------- |
+| `secrets.enabled`     | Enable Secrets     | `false` |
+| `secrets.data`        | Secret data        | `{}`    |
+| `secrets.annotations` | Secret annotations | `{}`    |
+
+### RBAC parameters
+
+| Name                                          | Description                                                      | Value   |
+| --------------------------------------------- | ---------------------------------------------------------------- | ------- |
+| `serviceAccount.create`                       | Specifies whether a ServiceAccount should be created             | `true`  |
+| `serviceAccount.name`                         | The name of the ServiceAccount to use.                           | `""`    |
+| `serviceAccount.annotations`                  | Additional Service Account annotations (evaluated as a template) | `{}`    |
+| `serviceAccount.automountServiceAccountToken` | Automount service account token for the server service account   | `true`  |
+| `rbac.create`                                 | Specifies whether RBAC resources should be created               | `false` |
+| `rbac.rules`                                  | Custom RBAC rules to set                                         | `[]`    |
+
+### Autoscaling parameters
+
+| Name                       | Description                          | Value   |
 | -------------------------- | ------------------------------------ | ------- |
 | `autoscaling.enabled`      | Enable Horizontal POD autoscaling    | `false` |
 | `autoscaling.minReplicas`  | Minimum number of replicas           | `1`     |
@@ -206,40 +321,77 @@ When `gatewayApi.nginxGatewayFabric.enabled` is `true` (requires `gatewayApi.ena
 | `autoscaling.targetCPU`    | Target CPU utilization percentage    | `80`    |
 | `autoscaling.targetMemory` | Target Memory utilization percentage | `80`    |
 
-### Update Strategy Parameters
+### Pod Disruption Budget parameters
 
-| Parameter                               | Description                                                       | Default         |
-| --------------------------------------- | ----------------------------------------------------------------- | --------------- |
-| `updateStrategy.type`                   | Update strategy type (RollingUpdate/Recreate/OnDelete)            | `RollingUpdate` |
-| `updateStrategy.rollingUpdate.maxSurge` | Max pods that can be created over desired replicas (Deployment)   | `nil`           |
-| `updateStrategy.rollingUpdate.maxUnavailable` | Max pods that can be unavailable during update              | `nil`           |
-| `updateStrategy.rollingUpdate.partition` | Ordinal at which StatefulSet should be partitioned (StatefulSet) | `nil`           |
+| Name                                 | Description                                                        | Value   |
+| ------------------------------------ | ------------------------------------------------------------------ | ------- |
+| `podDisruptionBudget.enabled`        | Enable PodDisruptionBudget                                         | `false` |
+| `podDisruptionBudget.minAvailable`   | Min number of pods that must still be available after the eviction | `1`     |
+| `podDisruptionBudget.maxUnavailable` | Max number of pods that can be unavailable after the eviction      | `""`    |
 
-### Pod Scheduling Parameters
+### Network Policy parameters
 
-| Parameter                 | Description                                   | Default |
-| ------------------------- | --------------------------------------------- | ------- |
-| `podAffinityPreset`       | Pod affinity preset (soft/hard)               | `""`    |
-| `podAntiAffinityPreset`   | Pod anti-affinity preset (soft/hard)          | `""`    |
-| `nodeAffinityPreset.type` | Node affinity preset type (soft/hard)         | `""`    |
-| `affinity`                | Custom affinity rules (overrides all presets) | `{}`    |
-| `nodeSelector`            | Node labels for pod assignment                | `{}`    |
-| `tolerations`             | Tolerations for pod assignment                | `[]`    |
+| Name                          | Description                | Value   |
+| ----------------------------- | -------------------------- | ------- |
+| `networkPolicy.enabled`       | Enable NetworkPolicy       | `false` |
+| `networkPolicy.allowExternal` | Allow external connections | `true`  |
+| `networkPolicy.extraIngress`  | Additional ingress rules   | `[]`    |
+| `networkPolicy.extraEgress`   | Additional egress rules    | `[]`    |
 
-### RBAC Parameters
+### ServiceMonitor parameters
 
-| Parameter               | Description           | Default |
-| ----------------------- | --------------------- | ------- |
-| `serviceAccount.create` | Create ServiceAccount | `true`  |
-| `serviceAccount.name`   | ServiceAccount name   | `""`    |
-| `rbac.create`           | Create RBAC resources | `false` |
-| `rbac.rules`            | Custom RBAC rules     | `[]`    |
+| Name                               | Description                                                                                          | Value      |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- |
+| `serviceMonitor.enabled`           | Create a ServiceMonitor resource for Prometheus Operator                                             | `false`    |
+| `serviceMonitor.port`              | Service port name to scrape. Must exist in service.ports.                                            | `metrics`  |
+| `serviceMonitor.path`              | HTTP path to scrape metrics from                                                                     | `/metrics` |
+| `serviceMonitor.interval`          | Scrape interval. Empty string inherits Prometheus Operator default.                                  | `""`       |
+| `serviceMonitor.scrapeTimeout`     | Scrape timeout. Empty string inherits Prometheus Operator default.                                   | `""`       |
+| `serviceMonitor.labels`            | Extra labels on the ServiceMonitor metadata.                                                         | `{}`       |
+| `serviceMonitor.annotations`       | Annotations on the ServiceMonitor metadata                                                           | `{}`       |
+| `serviceMonitor.honorLabels`       | Honor labels from the scrape target                                                                  | `false`    |
+| `serviceMonitor.jobLabel`          | Name of the Service label to use as the Prometheus job name.                                         | `""`       |
+| `serviceMonitor.relabelings`       | RelabelConfig entries applied before ingestion                                                       | `[]`       |
+| `serviceMonitor.scheme`            | HTTP scheme for scraping. Valid values: http, https. Empty = use Prometheus Operator default (http). | `""`       |
+| `serviceMonitor.metricRelabelings` | MetricRelabelConfig entries applied after scrape                                                     | `[]`       |
 
-### Extra Deploy Parameters
+### Pod parameters
 
-| Parameter      | Description                                                           | Default |
-| -------------- | --------------------------------------------------------------------- | ------- |
-| `extraDeploy`  | Array of extra Kubernetes objects to deploy (supports full templating) | `[]`    |
+| Name                                          | Description                                                                                                                                | Value           |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
+| `podLabels`                                   | Extra labels for pods                                                                                                                      | `{}`            |
+| `podAnnotations`                              | Annotations for pods                                                                                                                       | `{}`            |
+| `podAffinityPreset`                           | Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                                        | `""`            |
+| `podAntiAffinityPreset`                       | Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                                   | `""`            |
+| `nodeAffinityPreset.type`                     | Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`                                                  | `""`            |
+| `nodeAffinityPreset.key`                      | Node label key to match. Ignored if `affinity` is set                                                                                      | `""`            |
+| `nodeAffinityPreset.values`                   | Node label values to match. Ignored if `affinity` is set                                                                                   | `[]`            |
+| `affinity`                                    | Affinity for pods assignment                                                                                                               | `{}`            |
+| `nodeSelector`                                | Node labels for pods assignment                                                                                                            | `{}`            |
+| `tolerations`                                 | Tolerations for pods assignment                                                                                                            | `[]`            |
+| `updateStrategy.type`                         | statefulset/deployment strategy type                                                                                                       | `RollingUpdate` |
+| `updateStrategy.rollingUpdate.maxSurge`       | Maximum number of pods that can be created over desired replicas (Deployment only). Uncomment under `updateStrategy.rollingUpdate` to use. |                 |
+| `updateStrategy.rollingUpdate.maxUnavailable` | Maximum number of pods that can be unavailable during update. Uncomment under `updateStrategy.rollingUpdate` to use.                       |                 |
+| `updateStrategy.rollingUpdate.partition`      | Ordinal at which StatefulSet should be partitioned (StatefulSet only). Uncomment under `updateStrategy.rollingUpdate` to use.              |                 |
+| `minReadySeconds`                             | Min seconds a new Pod must be ready before considered available (Deployment and DaemonSet)                                                 | `0`             |
+| `priorityClassName`                           | pods' priorityClassName                                                                                                                    | `""`            |
+| `topologySpreadConstraints`                   | Topology Spread Constraints for pod assignment spread across your cluster among failure-domains                                            | `[]`            |
+| `schedulerName`                               | Name of the k8s scheduler (other than default) for pods                                                                                    | `""`            |
+| `terminationGracePeriodSeconds`               | Seconds pod needs to terminate gracefully                                                                                                  | `""`            |
+| `runtimeClassName`                            | Runtime Class Name for pods                                                                                                                | `""`            |
+| `hostAliases`                                 | pods host aliases                                                                                                                          | `[]`            |
+| `extraDeploy`                                 | Array of extra objects to deploy with the release (supports templating)                                                                    | `[]`            |
+
+## Gateway API notes
+
+These operational notes complement the `gatewayApi.*` parameters above; they cover behavior that the parameter table cannot express on its own.
+
+**NGINX Gateway Fabric (optional presets)** — active when `gatewayApi.nginxGatewayFabric.enabled` is `true` (requires `gatewayApi.enabled`). The chart renders NGF resources alongside the single chart-managed `HTTPRoute`:
+
+- Cluster must provide `gateway.nginx.org` CRDs (`ClientSettingsPolicy`, `SnippetsFilter`). Snippets require the NGF control plane to be installed with **snippets enabled** (Helm value `nginxGateway.snippets.enable: true`).
+- One shared `SnippetsFilter` per release is named `{{ release fullname }}-ngf-snippets` (63-char safe). The chart injects a single `HTTPRoute` `ExtensionRef` to it only when using the **generated default rule** (`gatewayApi.httpRoute.rules` empty). If you set full `gatewayApi.httpRoute.rules` yourself, add the `ExtensionRef` filter in your rules or use `extraDeploy`.
+- For HTTP → HTTPS migration, enable `gatewayApi.httpRedirect` to create an additional redirect-only `HTTPRoute` attached to your HTTP listener.
+
 
 ## Usage Examples
 
@@ -657,6 +809,22 @@ This chart is designed to be highly customizable. You can:
 4. **Extend \_helpers.tpl** with additional helper functions
 5. **Create multiple values files** for different environments (dev, staging, prod)
 
+### Maintaining the parameter docs
+
+The tables in the [Parameters](#parameters) section are **auto-generated** from the
+`## @param` / `## @section` annotations in `values.yaml` using
+[readme-generator-for-helm](https://github.com/bitnami/readme-generator-for-helm).
+Do not edit them by hand. After changing `values.yaml`, regenerate from the repo root:
+
+```bash
+make docs        # regenerate README parameter tables for all charts
+make docs-check  # verify README is in sync (used in CI)
+```
+
+Annotation rules: every leaf value needs a `## @param <path> <description>` line;
+use `[object]` / `[array]` modifiers for non-scalar values, `## @extra <path>` for
+documented-but-commented options, and `## @section` to group a table.
+
 ## Chart Structure
 
 ```
@@ -667,11 +835,15 @@ generic-app/
 │   ├── _helpers.tpl        # Template helpers
 │   ├── deployment.yaml     # Deployment resource
 │   ├── statefulset.yaml    # StatefulSet resource
+│   ├── daemonset.yaml      # DaemonSet resource
 │   ├── service.yaml        # Service resource
 │   ├── service-headless.yaml  # Headless service for StatefulSet
 │   ├── ingress.yaml        # Ingress resource
 │   ├── httproute.yaml      # Gateway API HTTPRoute
+│   ├── gatewayapi-http-redirect.yaml  # Optional HTTP -> HTTPS redirect HTTPRoute
 │   ├── gatewayapi-certificate.yaml  # cert-manager Certificate (Gateway TLS secret)
+│   ├── gatewayapi-ngf-clientsettingspolicy.yaml  # NGINX Gateway Fabric ClientSettingsPolicy
+│   ├── gatewayapi-ngf-snippetsfilter.yaml  # NGINX Gateway Fabric SnippetsFilter
 │   ├── issuer.yaml         # Cert-manager Issuer/ClusterIssuer
 │   ├── configmap.yaml      # ConfigMap resource
 │   ├── secret.yaml         # Secret resource
@@ -682,6 +854,7 @@ generic-app/
 │   ├── hpa.yaml            # HorizontalPodAutoscaler
 │   ├── pdb.yaml            # PodDisruptionBudget
 │   ├── networkpolicy.yaml  # NetworkPolicy
+│   ├── servicemonitor.yaml # Prometheus Operator ServiceMonitor
 │   ├── extra-deploy.yaml   # Extra Kubernetes objects
 │   └── NOTES.txt           # Installation notes
 └── README.md               # This file
