@@ -86,11 +86,11 @@ spec:
           envFrom:
             {{- range .Values.extraEnvVarsConfigMaps }}
             - configMapRef:
-                name: {{ . }}
+                name: {{ include "generic-app.tplvalues.render" (dict "value" . "context" $) }}
             {{- end }}
             {{- range .Values.extraEnvVarsSecrets }}
             - secretRef:
-                name: {{ . }}
+                name: {{ include "generic-app.tplvalues.render" (dict "value" . "context" $) }}
             {{- end }}
           {{- end }}
           ports:
