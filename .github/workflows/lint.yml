@@ -1,9 +1,9 @@
 name: Lint Charts
 
 on:
+  # Run on every PR so required status checks always report (a path-filtered
+  # trigger would leave PRs that don't touch charts/** stuck "pending").
   pull_request:
-    paths:
-      - 'charts/**'
   push:
     branches:
       - main
