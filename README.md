@@ -6,143 +6,69 @@ Production-ready Helm charts for Kubernetes deployments.
 
 ## Usage
 
-### Add Helm Repository
-
 ```bash
+# Add the repository
 helm repo add quyendv https://quyendv.github.io/helm-charts
 helm repo update
-```
 
-### Search Available Charts
-
-```bash
+# Discover charts
 helm search repo quyendv
-```
 
-### Install a Chart
-
-```bash
+# Install a chart
 helm install my-release quyendv/<chart-name>
 ```
 
 ## Available Charts
 
-| Chart                               | Description                                                | Version |
-| ----------------------------------- | ---------------------------------------------------------- | ------- |
-| [generic-app](./charts/generic-app) | Generic application chart for Deployments and StatefulSets | 1.0.0   |
+> The table below is auto-generated from each chart's `Chart.yaml` by `make docs`. Do not edit by hand. Click a chart for its full documentation, parameters and examples.
 
-## Charts
-
-### generic-app
-
-A comprehensive, production-ready Helm chart for deploying various applications to Kubernetes.
-
-**Features:**
-
-- Support for **Deployment** and **StatefulSet**
-- **Ingress** with TLS and cert-manager support
-- **Multiple ConfigMaps/Secrets** for environment variables
-- **Persistent Volume Claims** with flexible mounting
-- **Pod Affinity/Anti-Affinity** for HA deployments
-- **HPA, PDB, Network Policy**
-- **RBAC** with ServiceAccount and custom roles
-- **Health Probes** (Liveness, Readiness, Startup)
-- **Init Containers** and **Sidecars** support
-- **Security Context** configuration
-
-**Quick Install:**
-
-```bash
-helm install my-app quyendv/generic-app \
-  --set image.repository=nginx \
-  --set image.tag=1.25.3 \
-  --set service.type=LoadBalancer
-```
-
-[View Documentation](./charts/generic-app/README.md)
+<!-- CHARTS_TABLE:START -->
+| Chart | Description | Version |
+| ----- | ----------- | ------- |
+| [generic-app](./charts/generic-app) | A generic Helm chart that can be used for various applications | 1.9.1 |
+<!-- CHARTS_TABLE:END -->
 
 ## Development
 
-### Prerequisites
-
-- Helm 3.2.0+
-- Kubernetes 1.19+ (for testing)
-
-### Local Testing
-
 ```bash
-# Lint charts
-helm lint charts/generic-app
+# Lint all charts
+make lint
 
-# Template rendering
-helm template my-app charts/generic-app -f charts/generic-app/values.yaml
+# Regenerate docs (chart parameter tables + the table above)
+make docs
 
-# Dry-run installation
-helm install my-app charts/generic-app --dry-run --debug
+# Fail if docs are out of date (what CI runs)
+make docs-check
 
-# Install locally
-helm install my-app ./charts/generic-app
-
-# Test with examples
-helm template my-app charts/generic-app \
-  -f charts/generic-app/examples/values-microservice-example.yaml
+# Render / dry-run a chart locally
+helm template my-app charts/generic-app -f charts/generic-app/examples/values-webapp-example.yaml
+helm install my-app ./charts/generic-app --dry-run=client --debug
 ```
 
-### Chart Structure
+Run `make help` to list available tasks.
 
-```
-helm-charts/
-├── .github/
-│   └── workflows/
-│       └── release.yml           # GitHub Actions for chart releases
-├── charts/
-│   └── generic-app/              # Chart directory
-│       ├── Chart.yaml            # Chart metadata
-│       ├── values.yaml           # Default values
-│       ├── README.md             # Chart documentation
-│       ├── CHANGELOG.md          # Version history
-│       ├── MIGRATION.md          # Migration guide
-│       ├── templates/            # Kubernetes manifests
-│       │   ├── _helpers.tpl
-│       │   ├── deployment.yaml
-│       │   ├── statefulset.yaml
-│       │   ├── service.yaml
-│       │   ├── ingress.yaml
-│       │   └── ...
-│       ├── docs/                 # Additional documentation
-│       └── examples/             # Example values files
-│           ├── values-microservice-example.yaml
-│           ├── values-affinity-example.yaml
-│           └── ...
-└── README.md                     # This file
-```
+### Documentation model
+
+- **Per-chart docs live in the chart directory** (`charts/<name>/README.md`). Parameter tables there are generated from the `## @param` annotations in `values.yaml` via [readme-generator-for-helm](https://github.com/bitnami/readme-generator-for-helm).
+- **This root README** is just an index. Its chart table is generated from `Chart.yaml`, and `index.html` (the GitHub Pages landing page) reads the live version from the published `index.yaml`. So versions and the chart list stay in sync automatically — edit `values.yaml`/`Chart.yaml`, then run `make docs`.
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/my-chart`
-3. Commit your changes: `git commit -am 'Add new chart'`
-4. Push to the branch: `git push origin feature/my-chart`
-5. Submit a pull request
+1. Branch off `develop`.
+2. Make your changes, update `values.yaml` annotations / `Chart.yaml` as needed.
+3. Run `make docs` and `make lint`, commit the result.
+4. Open a pull request against `develop`.
 
-### Adding a New Chart
+### Adding a new chart
 
-1. Create chart directory: `helm create <chart-name>`
-2. Update `Chart.yaml` with proper metadata
-3. Add comprehensive `README.md`
-4. Test thoroughly
-5. Submit PR to `develop` branch
+1. Create the chart under `charts/<chart-name>/`.
+2. Fill in `Chart.yaml` (name, version, description) and document `values.yaml` with `## @param` annotations.
+3. Run `make docs` — the chart is picked up automatically and added to the table above.
+4. Submit a PR to `develop`.
 
-## Automated Releases
+## Automated releases
 
-Charts are automatically packaged and published to GitHub Pages when changes are pushed to `main` or `develop` branches using [chart-releaser-action](https://github.com/helm/chart-releaser-action).
-
-The release process:
-
-1. Packages all charts in the repository
-2. Creates GitHub releases for each chart version
-3. Updates the Helm repository index
-4. Publishes to GitHub Pages
+Pushing to `main` or `develop` (when `charts/**` changes) triggers [chart-releaser-action](https://github.com/helm/chart-releaser-action), which packages each chart, creates a GitHub release per chart version, updates the Helm repository `index.yaml`, and deploys `index.html` to GitHub Pages. Existing versions are skipped (`skip_existing`), so bump the chart `version` to publish a new release.
 
 ## License
 
@@ -155,4 +81,3 @@ The release process:
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/quyendv/helm-charts/issues)
-- **Documentation**: [Chart Documentation](./charts/generic-app/README.md)
