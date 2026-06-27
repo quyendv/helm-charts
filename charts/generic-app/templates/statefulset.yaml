@@ -16,6 +16,9 @@ spec:
   {{- if .Values.updateStrategy }}
   updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
   {{- end }}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) .Values.persistence.persistentVolumeClaimRetentionPolicy }}
+  persistentVolumeClaimRetentionPolicy: {{- toYaml .Values.persistence.persistentVolumeClaimRetentionPolicy | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels: {{- include "generic-app.selectorLabels" . | nindent 6 }}
   template:

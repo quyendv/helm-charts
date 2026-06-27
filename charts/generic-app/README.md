@@ -74,6 +74,13 @@ To uninstall/delete the `my-app` deployment:
 helm uninstall my-app
 ```
 
+> **Data is retained by default.** `helm uninstall` does **not** delete your PersistentVolumeClaims:
+>
+> - **Deployment**: the chart-managed PVC carries `helm.sh/resource-policy: keep` (`persistence.resourcePolicy`, default `keep`). Set `persistence.resourcePolicy=""` to let Helm delete it on uninstall.
+> - **StatefulSet**: PVCs come from `volumeClaimTemplates` and are governed by Kubernetes, which retains them by default. Use `persistence.persistentVolumeClaimRetentionPolicy` (k8s 1.27+) to opt into automatic cleanup.
+>
+> To remove retained data manually: `kubectl delete pvc -l app.kubernetes.io/instance=my-app`
+
 ## Parameters
 
 ### Global parameters
@@ -262,18 +269,20 @@ helm uninstall my-app
 
 ### Persistence parameters
 
-| Name                        | Description                                             | Value               |
-| --------------------------- | ------------------------------------------------------- | ------------------- |
-| `persistence.enabled`       | Enable persistence using Persistent Volume Claims       | `false`             |
-| `persistence.storageClass`  | Storage class of backing PVC                            | `""`                |
-| `persistence.annotations`   | Persistent Volume Claim annotations                     | `{}`                |
-| `persistence.accessModes`   | Persistent Volume Access Modes                          | `["ReadWriteOnce"]` |
-| `persistence.size`          | Size of data volume                                     | `8Gi`               |
-| `persistence.existingClaim` | The name of an existing PVC to use for persistence      | `""`                |
-| `persistence.selector`      | Selector to match an existing Persistent Volume for PVC | `{}`                |
-| `persistence.dataSource`    | Custom PVC data source                                  | `{}`                |
-| `persistence.mountPath`     | The path the volume will be mounted at                  | `/data`             |
-| `persistence.subPath`       | The subdirectory of the volume to mount to              | `""`                |
+| Name                                               | Description                                                                                                                                             | Value               |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `persistence.enabled`                              | Enable persistence using Persistent Volume Claims                                                                                                       | `false`             |
+| `persistence.storageClass`                         | Storage class of backing PVC                                                                                                                            | `""`                |
+| `persistence.annotations`                          | Persistent Volume Claim annotations                                                                                                                     | `{}`                |
+| `persistence.accessModes`                          | Persistent Volume Access Modes                                                                                                                          | `["ReadWriteOnce"]` |
+| `persistence.size`                                 | Size of data volume                                                                                                                                     | `8Gi`               |
+| `persistence.existingClaim`                        | The name of an existing PVC to use for persistence                                                                                                      | `""`                |
+| `persistence.selector`                             | Selector to match an existing Persistent Volume for PVC                                                                                                 | `{}`                |
+| `persistence.dataSource`                           | Custom PVC data source                                                                                                                                  | `{}`                |
+| `persistence.mountPath`                            | The path the volume will be mounted at                                                                                                                  | `/data`             |
+| `persistence.subPath`                              | The subdirectory of the volume to mount to                                                                                                              | `""`                |
+| `persistence.resourcePolicy`                       | Keep the chart-managed PVC on `helm uninstall` (Deployment only). Set `helm.sh/resource-policy` annotation; "keep" retains data, "" lets Helm delete it | `keep`              |
+| `persistence.persistentVolumeClaimRetentionPolicy` | StatefulSet PVC retention policy (Kubernetes 1.27+). Controls whether volumeClaimTemplates PVCs are deleted on StatefulSet scale-down/delete            | `{}`                |
 
 ### Volume Permissions parameters
 

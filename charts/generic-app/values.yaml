@@ -710,6 +710,23 @@ persistence:
   ## Useful in dev environments and one PV for multiple services
   ##
   subPath: ""
+  ## @param persistence.resourcePolicy Keep the chart-managed PVC on `helm uninstall` (Deployment only). Set `helm.sh/resource-policy` annotation; "keep" retains data, "" lets Helm delete it
+  ## Only applies to the standalone PVC created for kind=Deployment. StatefulSet
+  ## PVCs come from volumeClaimTemplates and are governed by Kubernetes (see
+  ## persistentVolumeClaimRetentionPolicy below), not Helm. Default "keep" is the
+  ## safe production choice — uninstall will not destroy your data.
+  ##
+  resourcePolicy: keep
+  ## @param persistence.persistentVolumeClaimRetentionPolicy [object] StatefulSet PVC retention policy (Kubernetes 1.27+). Controls whether volumeClaimTemplates PVCs are deleted on StatefulSet scale-down/delete
+  ## ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#persistentvolumeclaim-retention
+  ## Leave whenDeleted/whenScaled as "Retain" (k8s default) to keep data safe, or
+  ## set to "Delete" to let Kubernetes garbage-collect the PVCs automatically.
+  ## e.g:
+  ## persistentVolumeClaimRetentionPolicy:
+  ##   whenDeleted: Retain
+  ##   whenScaled: Retain
+  ##
+  persistentVolumeClaimRetentionPolicy: {}
 
 ## @section Volume Permissions parameters
 
