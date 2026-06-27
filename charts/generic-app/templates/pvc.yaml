@@ -5,8 +5,11 @@ metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- if or .Values.persistence.annotations .Values.commonAnnotations }}
+  {{- if or .Values.persistence.resourcePolicy .Values.persistence.annotations .Values.commonAnnotations }}
   annotations:
+    {{- if .Values.persistence.resourcePolicy }}
+    helm.sh/resource-policy: {{ .Values.persistence.resourcePolicy | quote }}
+    {{- end }}
     {{- if .Values.persistence.annotations }}
     {{- include "generic-app.tplvalues.render" ( dict "value" .Values.persistence.annotations "context" $) | nindent 4 }}
     {{- end }}
