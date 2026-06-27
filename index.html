@@ -262,15 +262,17 @@
           <span class="version" id="chart-version">Loading...</span>
 
           <div class="features">
-            <div class="feature">✓ Deployment & StatefulSet</div>
-            <div class="feature">✓ Ingress with TLS</div>
-            <div class="feature">✓ Gateway API (HTTPRoute)</div>
+            <div class="feature">✓ Deployment, StatefulSet & DaemonSet</div>
+            <div class="feature">✓ Ingress with TLS & cert-manager</div>
+            <div class="feature">✓ Gateway API (HTTPRoute, NGINX Gateway Fabric)</div>
             <div class="feature">✓ ConfigMaps & Secrets</div>
             <div class="feature">✓ PVC Support</div>
             <div class="feature">✓ HPA & PDB</div>
             <div class="feature">✓ Network Policy</div>
             <div class="feature">✓ RBAC Support</div>
             <div class="feature">✓ Health Probes</div>
+            <div class="feature">✓ ServiceMonitor (Prometheus)</div>
+            <div class="feature">✓ Init Containers & Sidecars</div>
             <div class="feature">✓ Extra Deploy Support</div>
           </div>
 
@@ -310,7 +312,7 @@
     <script>
       // Fetch chart version from index.yaml
       async function fetchChartVersion() {
-        const defaultVersion = 'v1.7.0';
+        const defaultVersion = 'v1.9.1';
         try {
           const response = await fetch('index.yaml');
           const text = await response.text();
