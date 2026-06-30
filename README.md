@@ -25,7 +25,7 @@ helm install my-release quyendv/<chart-name>
 <!-- CHARTS_TABLE:START -->
 | Chart | Description | Version |
 | ----- | ----------- | ------- |
-| [generic-app](./charts/generic-app) | A generic Helm chart that can be used for various applications | 1.9.2 |
+| [generic-app](./charts/generic-app) | A generic Helm chart that can be used for various applications | 1.10.0 |
 <!-- CHARTS_TABLE:END -->
 
 ## Development

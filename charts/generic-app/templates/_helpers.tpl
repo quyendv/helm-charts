@@ -353,12 +353,26 @@ WARNING: serviceMonitor.enabled is true but port "{{ $port }}" is not found in s
 {{/*
 Compile all warnings into a single message.
 */}}
+{{- define "generic-app.checkExternalSecret" -}}
+  {{- $msgs := list -}}
+  {{- if .Values.externalSecret.enabled -}}
+    {{- if not .Values.externalSecret.secretStoreRef.name -}}
+      {{- $msgs = append $msgs "WARNING: externalSecret.enabled is true but externalSecret.secretStoreRef.name is empty. The ExternalSecret will not sync until a SecretStore/ClusterSecretStore is referenced." -}}
+    {{- end -}}
+    {{- if and (not .Values.externalSecret.data) (not .Values.externalSecret.dataFrom) -}}
+      {{- $msgs = append $msgs "WARNING: externalSecret.enabled is true but neither externalSecret.data nor externalSecret.dataFrom is set. The resulting Secret will be empty." -}}
+    {{- end -}}
+  {{- end -}}
+  {{- join "\n" $msgs -}}
+{{- end -}}
+
 {{- define "generic-app.validateValues" -}}
   {{- $messages := list -}}
   {{- $messages := append $messages (include "generic-app.checkRollingTags" .) -}}
   {{- $messages := append $messages (include "generic-app.checkGatewayApiIngressConflict" .) -}}
   {{- $messages := append $messages (include "generic-app.checkDaemonSetAutoscaling" .) -}}
   {{- $messages := append $messages (include "generic-app.checkServiceMonitorPort" .) -}}
+  {{- $messages := append $messages (include "generic-app.checkExternalSecret" .) -}}
   {{- $messages := without $messages "" -}}
   {{- $message := join "\n" $messages -}}
 
