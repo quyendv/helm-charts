@@ -5,6 +5,12 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-06-30
+
+### Added
+
+- **`ExternalSecret` integration** (`externalSecret.*`): first-class support for the External Secrets Operator, alongside the existing cert-manager / Gateway API / ServiceMonitor integrations. Set `externalSecret.enabled=true` to create an `ExternalSecret` that materializes a Secret (named after the chart by default) which the app can consume via `extraEnvVarsSecrets`. Configurable: `apiVersion` (override for older operator releases), `refreshInterval`, `secretStoreRef`, `target` (name/creationPolicy/deletionPolicy/template), `data`, `dataFrom`, `annotations`, `labels`. A validation warning fires when enabled without a store reference or without any data. For advanced cases (multiple ExternalSecrets, PushSecret, generators) keep using `extraDeploy`.
+
 ## [1.9.2] - 2026-06-27
 
 ### Added
