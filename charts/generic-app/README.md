@@ -4,12 +4,14 @@ A comprehensive, production-ready Helm chart that can be used as a template for 
 
 ## Features
 
-- ✅ Support for both **Deployment** and **StatefulSet**
+- ✅ Support for **Deployment**, **StatefulSet** and **DaemonSet**
 - ✅ Flexible **Service** configuration (ClusterIP, NodePort, LoadBalancer)
 - ✅ **Ingress** with TLS support
 - ✅ **Gateway API** (`HTTPRoute`) and optional cert-manager **Certificate** for TLS secrets used by Gateways
 - ✅ **Automatic SSL/TLS certificate** management with cert-manager (Let's Encrypt, CA, Vault)
 - ✅ **ConfigMaps** and **Secrets** management
+- ✅ **External Secrets** (`ExternalSecret`) integration for provider-backed secrets
+- ✅ **ServiceMonitor** (Prometheus Operator) integration
 - ✅ **Persistent Volume Claims** (PVC)
 - ✅ **ServiceAccount** and **RBAC** configuration
 - ✅ **Horizontal Pod Autoscaling** (HPA)
@@ -308,6 +310,24 @@ helm uninstall my-app
 | `secrets.enabled`     | Enable Secrets     | `false` |
 | `secrets.data`        | Secret data        | `{}`    |
 | `secrets.annotations` | Secret annotations | `{}`    |
+
+### External Secrets parameters
+
+| Name                                   | Description                                                                                                                      | Value                    |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `externalSecret.enabled`               | Create an ExternalSecret resource (requires External Secrets Operator)                                                           | `false`                  |
+| `externalSecret.apiVersion`            | ExternalSecret API version (override for clusters on older External Secrets Operator releases, e.g. external-secrets.io/v1beta1) | `external-secrets.io/v1` |
+| `externalSecret.refreshInterval`       | How often to sync values from the provider (e.g. 1h, 15m, 0 to disable)                                                          | `1h`                     |
+| `externalSecret.secretStoreRef.name`   | Name of the SecretStore / ClusterSecretStore to pull from                                                                        | `""`                     |
+| `externalSecret.secretStoreRef.kind`   | Store kind: SecretStore or ClusterSecretStore                                                                                    | `SecretStore`            |
+| `externalSecret.target.name`           | Name of the Secret to create. Empty defaults to the chart fullname                                                               | `""`                     |
+| `externalSecret.target.creationPolicy` | How the target Secret is created: Owner, Orphan, Merge or None                                                                   | `Owner`                  |
+| `externalSecret.target.deletionPolicy` | What happens to the Secret when the ExternalSecret is deleted: Retain, Delete or Merge                                           | `Retain`                 |
+| `externalSecret.target.template`       | Optional target template (set Secret type, render templated keys)                                                                | `{}`                     |
+| `externalSecret.data`                  | Explicit key mappings, e.g. [{ secretKey: DB_PASS, remoteRef: { key: prod/db, property: password } }]                            | `[]`                     |
+| `externalSecret.dataFrom`              | Bulk import, e.g. [{ extract: { key: prod/db } }] or [{ find: { name: { regexp: "^prod/" } } }]                                  | `[]`                     |
+| `externalSecret.annotations`           | Additional annotations for the ExternalSecret                                                                                    | `{}`                     |
+| `externalSecret.labels`                | Additional labels for the ExternalSecret                                                                                         | `{}`                     |
 
 ### RBAC parameters
 
@@ -794,6 +814,38 @@ Install:
 ```bash
 helm install myapp ./charts/generic-app -f charts/generic-app/examples/values-extra-deploy-example.yaml
 ```
+
+### Example 9: Pull Secrets from a Provider with External Secrets
+
+```yaml
+# values-external-secret.yaml
+image:
+  repository: myapp
+  tag: '1.0.0'
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  # Materialized Secret defaults to the release fullname
+  data:
+    - secretKey: DB_PASSWORD
+      remoteRef:
+        key: prod/myapp/db
+        property: password
+  # Or import everything under a path at once:
+  dataFrom:
+    - extract:
+        key: prod/myapp/config
+
+# Load the operator-created Secret into the app as env vars
+extraEnvVarsSecrets:
+  - '{{ include "generic-app.fullname" . }}'
+```
+
+> Requires the [External Secrets Operator](https://external-secrets.io/) and a `SecretStore`/`ClusterSecretStore` in the cluster. The operator creates the target Secret asynchronously, so the Pod starts only once that Secret exists. Secret rotation in the provider does not auto-restart Pods — use a reloader controller if you need that. For multiple `ExternalSecret`s, `PushSecret`, or generators, use `extraDeploy`.
 
 ## Best Practices
 
