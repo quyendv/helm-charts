@@ -5,6 +5,12 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-07-06
+
+### Added
+
+- **`gatewayApi.httpRoute.timeouts`**: set Gateway API HTTPRoute rule timeouts (`request` / `backendRequest`) on the generated default rule without having to override the whole `rules` block. Applies only when `rules` is empty (same scoping as `httpRoute.path`); when you author full `rules`, put `timeouts` per-rule yourself. Rendered via `tplvalues.render`.
+
 ## [1.10.0] - 2026-06-30
 
 ### Added

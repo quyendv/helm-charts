@@ -455,6 +455,16 @@ gatewayApi:
     path:
       type: PathPrefix
       value: /
+    ## @param gatewayApi.httpRoute.timeouts [object] Timeouts injected into the generated default rule (only when rules is empty). Ignored when rules is set — put timeouts per-rule there instead
+    ## Gateway API HTTPRoute rule timeouts. request = total client-facing timeout;
+    ## backendRequest = per-try timeout to the backend (must be <= request).
+    ## ref: https://gateway-api.sigs.k8s.io/api-types/httproute/#timeouts-optional
+    ## e.g:
+    ## timeouts:
+    ##   request: 180s
+    ##   backendRequest: 180s
+    ##
+    timeouts: {}
     ## @param gatewayApi.httpRoute.rules Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule).
     ## When non-empty, the chart does not inject nginxGatewayFabric SnippetsFilter ExtensionRef on rules (add filters yourself or use extraDeploy).
     ## Rendered via tplvalues.render — supports three authoring styles:
