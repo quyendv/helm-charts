@@ -458,7 +458,7 @@ gatewayApi:
     ## @param gatewayApi.httpRoute.timeouts [object] Timeouts injected into the generated default rule (only when rules is empty). Ignored when rules is set — put timeouts per-rule there instead
     ## Gateway API HTTPRoute rule timeouts. request = total client-facing timeout;
     ## backendRequest = per-try timeout to the backend (must be <= request).
-    ## ref: https://gateway-api.sigs.k8s.io/api-types/httproute/#timeouts-optional
+    ## ref: https://gateway-api.sigs.k8s.io/reference/api-types/httproute/#timeouts-optional
     ## e.g:
     ## timeouts:
     ##   request: 180s
