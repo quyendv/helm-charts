@@ -54,6 +54,9 @@ spec:
             kind: SnippetsFilter
             name: {{ include "generic-app.gatewayApi.nginxGatewayFabric.snippetsFilterName" . | quote }}
       {{- end }}
+      {{- if .Values.gatewayApi.httpRoute.timeouts }}
+      timeouts: {{- include "generic-app.tplvalues.render" (dict "value" .Values.gatewayApi.httpRoute.timeouts "context" $) | nindent 8 }}
+      {{- end }}
       backendRefs:
         - name: {{ include "generic-app.fullname" . }}
           port: {{ index .Values.service.ports "http" }}

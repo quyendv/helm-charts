@@ -200,42 +200,43 @@ helm uninstall my-app
 
 ### Gateway API parameters
 
-| Name                                                          | Description                                                                                                   | Value   |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------- |
-| `gatewayApi.enabled`                                          | Create HTTPRoute (and optional Certificate) for Gateway API                                                   | `false` |
-| `gatewayApi.apiVersion`                                       | HTTPRoute API version (leave empty for gateway.networking.k8s.io/v1)                                          | `""`    |
-| `gatewayApi.hostname`                                         | Convenience hostname (appended to httpRoute.hostnames for route + cert)                                       | `""`    |
-| `gatewayApi.httpRoute.name`                                   | HTTPRoute resource name (defaults to release fullname)                                                        | `""`    |
-| `gatewayApi.httpRoute.annotations`                            | HTTPRoute annotations                                                                                         | `{}`    |
-| `gatewayApi.httpRoute.labels`                                 | Extra labels for HTTPRoute                                                                                    | `{}`    |
-| `gatewayApi.httpRoute.parentRefs`                             | Attach to existing Gateway(s) / GatewayClass via standard parentRefs                                          | `[]`    |
-| `gatewayApi.httpRoute.hostnames`                              | HTTPRoute spec.hostnames (SNI / Host header routing)                                                          | `[]`    |
-| `gatewayApi.httpRoute.path`                                   | Default path match when rules is empty (PathPrefix)                                                           | `{}`    |
-| `gatewayApi.httpRoute.rules`                                  | Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule).                                | `[]`    |
-| `gatewayApi.httpRoute.extraRules`                             | Rendered YAML appended after generated rules (advanced)                                                       | `""`    |
-| `gatewayApi.httpRedirect.enabled`                             | Create an extra HTTPRoute that redirects requests to HTTPS                                                    | `false` |
-| `gatewayApi.httpRedirect.name`                                | Redirect HTTPRoute resource name (defaults to fullname + "-http-redirect")                                    | `""`    |
-| `gatewayApi.httpRedirect.annotations`                         | Redirect HTTPRoute annotations                                                                                | `{}`    |
-| `gatewayApi.httpRedirect.labels`                              | Extra labels for redirect HTTPRoute                                                                           | `{}`    |
-| `gatewayApi.httpRedirect.parentRefs`                          | ParentRefs for redirect route (typically HTTP listener, e.g. sectionName: http)                               | `[]`    |
-| `gatewayApi.httpRedirect.hostnames`                           | Redirect route hostnames (defaults to effective route hostnames when empty)                                   | `[]`    |
-| `gatewayApi.httpRedirect.path`                                | Match path for redirect route                                                                                 | `{}`    |
-| `gatewayApi.httpRedirect.scheme`                              | Redirect target scheme                                                                                        | `https` |
-| `gatewayApi.httpRedirect.statusCode`                          | Redirect status code                                                                                          | `301`   |
-| `gatewayApi.certificate.enabled`                              | Create cert-manager.io/v1 Certificate                                                                         | `false` |
-| `gatewayApi.certificate.name`                                 | Certificate resource name (defaults to fullname + "-gateway-tls")                                             | `""`    |
-| `gatewayApi.certificate.annotations`                          | Certificate annotations                                                                                       | `{}`    |
-| `gatewayApi.certificate.secretName`                           | Kubernetes Secret name for TLS material (defaults to first hostname + "-tls", else fullname + "-gateway-tls") | `""`    |
-| `gatewayApi.certificate.issuerRef`                            | cert-manager issuer reference (production: ClusterIssuer)                                                     | `{}`    |
-| `gatewayApi.certificate.dnsNames`                             | Certificate spec.dnsNames (defaults to effective HTTPRoute hostnames)                                         | `[]`    |
-| `gatewayApi.certificate.duration`                             | Optional certificate duration (e.g. 2160h)                                                                    | `""`    |
-| `gatewayApi.certificate.renewBefore`                          | Optional renew before (e.g. 360h)                                                                             | `""`    |
-| `gatewayApi.nginxGatewayFabric.enabled`                       | Turn on NGF policy/snippet resources (requires gatewayApi.enabled)                                            | `false` |
-| `gatewayApi.nginxGatewayFabric.clientSettings.bodyMaxSize`    | Maps to client_max_body_size (e.g. 1024m). Empty = omit policy.                                               | `""`    |
-| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.connect` | e.g. 600s                                                                                                     | `""`    |
-| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.read`    | e.g. 600s                                                                                                     | `""`    |
-| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.send`    | e.g. 600s                                                                                                     | `""`    |
-| `gatewayApi.nginxGatewayFabric.snippets.extra`                | List of { context, value } maps (NGF SnippetsFilter item shape)                                               | `[]`    |
+| Name                                                          | Description                                                                                                                                   | Value   |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `gatewayApi.enabled`                                          | Create HTTPRoute (and optional Certificate) for Gateway API                                                                                   | `false` |
+| `gatewayApi.apiVersion`                                       | HTTPRoute API version (leave empty for gateway.networking.k8s.io/v1)                                                                          | `""`    |
+| `gatewayApi.hostname`                                         | Convenience hostname (appended to httpRoute.hostnames for route + cert)                                                                       | `""`    |
+| `gatewayApi.httpRoute.name`                                   | HTTPRoute resource name (defaults to release fullname)                                                                                        | `""`    |
+| `gatewayApi.httpRoute.annotations`                            | HTTPRoute annotations                                                                                                                         | `{}`    |
+| `gatewayApi.httpRoute.labels`                                 | Extra labels for HTTPRoute                                                                                                                    | `{}`    |
+| `gatewayApi.httpRoute.parentRefs`                             | Attach to existing Gateway(s) / GatewayClass via standard parentRefs                                                                          | `[]`    |
+| `gatewayApi.httpRoute.hostnames`                              | HTTPRoute spec.hostnames (SNI / Host header routing)                                                                                          | `[]`    |
+| `gatewayApi.httpRoute.path`                                   | Default path match when rules is empty (PathPrefix)                                                                                           | `{}`    |
+| `gatewayApi.httpRoute.timeouts`                               | Timeouts injected into the generated default rule (only when rules is empty). Ignored when rules is set — put timeouts per-rule there instead | `{}`    |
+| `gatewayApi.httpRoute.rules`                                  | Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule).                                                                | `[]`    |
+| `gatewayApi.httpRoute.extraRules`                             | Rendered YAML appended after generated rules (advanced)                                                                                       | `""`    |
+| `gatewayApi.httpRedirect.enabled`                             | Create an extra HTTPRoute that redirects requests to HTTPS                                                                                    | `false` |
+| `gatewayApi.httpRedirect.name`                                | Redirect HTTPRoute resource name (defaults to fullname + "-http-redirect")                                                                    | `""`    |
+| `gatewayApi.httpRedirect.annotations`                         | Redirect HTTPRoute annotations                                                                                                                | `{}`    |
+| `gatewayApi.httpRedirect.labels`                              | Extra labels for redirect HTTPRoute                                                                                                           | `{}`    |
+| `gatewayApi.httpRedirect.parentRefs`                          | ParentRefs for redirect route (typically HTTP listener, e.g. sectionName: http)                                                               | `[]`    |
+| `gatewayApi.httpRedirect.hostnames`                           | Redirect route hostnames (defaults to effective route hostnames when empty)                                                                   | `[]`    |
+| `gatewayApi.httpRedirect.path`                                | Match path for redirect route                                                                                                                 | `{}`    |
+| `gatewayApi.httpRedirect.scheme`                              | Redirect target scheme                                                                                                                        | `https` |
+| `gatewayApi.httpRedirect.statusCode`                          | Redirect status code                                                                                                                          | `301`   |
+| `gatewayApi.certificate.enabled`                              | Create cert-manager.io/v1 Certificate                                                                                                         | `false` |
+| `gatewayApi.certificate.name`                                 | Certificate resource name (defaults to fullname + "-gateway-tls")                                                                             | `""`    |
+| `gatewayApi.certificate.annotations`                          | Certificate annotations                                                                                                                       | `{}`    |
+| `gatewayApi.certificate.secretName`                           | Kubernetes Secret name for TLS material (defaults to first hostname + "-tls", else fullname + "-gateway-tls")                                 | `""`    |
+| `gatewayApi.certificate.issuerRef`                            | cert-manager issuer reference (production: ClusterIssuer)                                                                                     | `{}`    |
+| `gatewayApi.certificate.dnsNames`                             | Certificate spec.dnsNames (defaults to effective HTTPRoute hostnames)                                                                         | `[]`    |
+| `gatewayApi.certificate.duration`                             | Optional certificate duration (e.g. 2160h)                                                                                                    | `""`    |
+| `gatewayApi.certificate.renewBefore`                          | Optional renew before (e.g. 360h)                                                                                                             | `""`    |
+| `gatewayApi.nginxGatewayFabric.enabled`                       | Turn on NGF policy/snippet resources (requires gatewayApi.enabled)                                                                            | `false` |
+| `gatewayApi.nginxGatewayFabric.clientSettings.bodyMaxSize`    | Maps to client_max_body_size (e.g. 1024m). Empty = omit policy.                                                                               | `""`    |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.connect` | e.g. 600s                                                                                                                                     | `""`    |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.read`    | e.g. 600s                                                                                                                                     | `""`    |
+| `gatewayApi.nginxGatewayFabric.upstreamProxyTimeouts.send`    | e.g. 600s                                                                                                                                     | `""`    |
+| `gatewayApi.nginxGatewayFabric.snippets.extra`                | List of { context, value } maps (NGF SnippetsFilter item shape)                                                                               | `[]`    |
 
 ### Resources parameters
 
@@ -421,6 +422,21 @@ These operational notes complement the `gatewayApi.*` parameters above; they cov
 - One shared `SnippetsFilter` per release is named `{{ release fullname }}-ngf-snippets` (63-char safe). The chart injects a single `HTTPRoute` `ExtensionRef` to it only when using the **generated default rule** (`gatewayApi.httpRoute.rules` empty). If you set full `gatewayApi.httpRoute.rules` yourself, add the `ExtensionRef` filter in your rules or use `extraDeploy`.
 - For HTTP → HTTPS migration, enable `gatewayApi.httpRedirect` to create an additional redirect-only `HTTPRoute` attached to your HTTP listener.
 
+**Timeouts** — set `gatewayApi.httpRoute.timeouts` (`request` / `backendRequest`) to add rule timeouts to the generated default rule without rewriting `matches`/`backendRefs`:
+
+```yaml
+gatewayApi:
+  enabled: true
+  httpRoute:
+    parentRefs:
+      - name: my-gateway
+        namespace: gateway-system
+    timeouts:
+      request: 180s        # total client-facing timeout
+      backendRequest: 180s # per-try timeout to the backend (<= request)
+```
+
+Like `httpRoute.path`, this only applies to the auto-generated rule. If you author full `gatewayApi.httpRoute.rules`, put `timeouts` on each rule yourself.
 
 ## Usage Examples
 
