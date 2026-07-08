@@ -83,6 +83,36 @@ helm uninstall my-app
 >
 > To remove retained data manually: `kubectl delete pvc -l app.kubernetes.io/instance=my-app`
 
+### PVC retention: Helm vs Argo CD
+
+Data is kept by default in both runtimes, but the mechanism differs.
+
+**Plain Helm** (`helm install` / `upgrade` / `uninstall`):
+
+- The `helm.sh/resource-policy: keep` annotation is read by the Helm client, so `helm uninstall` skips the PVC.
+
+**Argo CD** (renders with `helm template` — there is no Helm release, so `helm uninstall` never runs):
+
+- Argo CD **does** honor `helm.sh/resource-policy: keep`, treating it as equivalent to `argocd.argoproj.io/sync-options: Delete=false`.
+- That protects the PVC on **Application deletion** (cascade delete) — the analog of `helm uninstall`. ✅
+- It does **not** imply `Prune=false`. If the PVC is removed from the rendered output (e.g. you set `persistence.enabled=false`) while the Application still exists and auto-prune is on, Argo CD **will prune it**. To also prevent that, opt in via `persistence.annotations`:
+
+  ```yaml
+  persistence:
+    resourcePolicy: keep
+    annotations:
+      argocd.argoproj.io/sync-options: Prune=false
+  ```
+
+| Deletion path | Helm | Argo CD | Protected by `keep`? |
+| --- | --- | --- | --- |
+| Uninstall / App delete | `helm uninstall` | cascade delete | ✅ |
+| Removed from source (drift) | — (no such concept) | prune | ❌ — add `Prune=false` |
+
+> The chart intentionally does **not** auto-inject `argocd.argoproj.io/sync-options` annotations: `Delete=false` would be redundant with `keep`, and `Prune=false` is a stronger, different policy (it leaves the Application `OutOfSync` when a resource is legitimately removed) that should be an explicit opt-in.
+
+**Cleanest for a pre-existing PVC** (adopting a workload into the chart): set `persistence.existingClaim: <name>`. The chart then only *references* the PVC (it is not rendered or owned), so neither Helm nor Argo CD ever deletes or prunes it — and no ownership/adoption step is needed.
+
 ## Parameters
 
 ### Global parameters
