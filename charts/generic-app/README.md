@@ -316,6 +316,7 @@ Data is kept by default in both runtimes, but the mechanism differs.
 | `persistence.subPath`                              | The subdirectory of the volume to mount to                                                                                                              | `""`                |
 | `persistence.resourcePolicy`                       | Keep the chart-managed PVC on `helm uninstall` (Deployment only). Set `helm.sh/resource-policy` annotation; "keep" retains data, "" lets Helm delete it | `keep`              |
 | `persistence.persistentVolumeClaimRetentionPolicy` | StatefulSet PVC retention policy (Kubernetes 1.27+). Controls whether volumeClaimTemplates PVCs are deleted on StatefulSet scale-down/delete            | `{}`                |
+| `persistence.extraVolumeClaimTemplates`            | Additional StatefulSet volumeClaimTemplates, appended after the default `data` claim (StatefulSet only)                                                 | `[]`                |
 
 ### Volume Permissions parameters
 
@@ -892,6 +893,48 @@ extraEnvVarsSecrets:
 ```
 
 > Requires the [External Secrets Operator](https://external-secrets.io/) and a `SecretStore`/`ClusterSecretStore` in the cluster. The operator creates the target Secret asynchronously, so the Pod starts only once that Secret exists. Secret rotation in the provider does not auto-restart Pods — use a reloader controller if you need that. For multiple `ExternalSecret`s, `PushSecret`, or generators, use `extraDeploy`.
+
+### Example 10: StatefulSet with Multiple volumeClaimTemplates
+
+```yaml
+# values-multi-pvc.yaml
+kind: StatefulSet
+
+image:
+  repository: postgres
+  tag: '15'
+
+# Default "data" claim (mounted at persistence.mountPath)
+persistence:
+  enabled: true
+  size: 20Gi
+  mountPath: /var/lib/postgresql/data
+  # Extra per-replica claims, appended after "data"
+  extraVolumeClaimTemplates:
+    - metadata:
+        name: wal
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 10Gi
+    - metadata:
+        name: logs
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 5Gi
+
+# Mount the extra claims (name must match each volumeClaimTemplate's metadata.name)
+extraVolumeMounts:
+  - name: wal
+    mountPath: /var/lib/postgresql/wal
+  - name: logs
+    mountPath: /var/log/postgresql
+```
+
+> Each `volumeClaimTemplate` yields a per-replica PVC (`<name>-<pod>-N`). To define **only** custom claims (no default `data`), set `persistence.enabled: false` and list them all under `extraVolumeClaimTemplates`. Retention of these PVCs follows `persistence.persistentVolumeClaimRetentionPolicy` / Kubernetes defaults, same as the `data` claim.
 
 ## Best Practices
 

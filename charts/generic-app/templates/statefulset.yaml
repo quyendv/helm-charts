@@ -162,8 +162,9 @@ spec:
         {{- if .Values.extraVolumes }}
         {{- include "generic-app.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
         {{- end }}
-  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+  {{- if or (and .Values.persistence.enabled (not .Values.persistence.existingClaim)) .Values.persistence.extraVolumeClaimTemplates }}
   volumeClaimTemplates:
+    {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
     - metadata:
         name: data
         labels: {{- include "generic-app.labels" . | nindent 10 }}
@@ -185,6 +186,10 @@ spec:
         {{- if .Values.persistence.dataSource }}
         dataSource: {{- toYaml .Values.persistence.dataSource | nindent 10 }}
         {{- end }}
+    {{- end }}
+    {{- if .Values.persistence.extraVolumeClaimTemplates }}
+    {{- include "generic-app.tplvalues.render" (dict "value" .Values.persistence.extraVolumeClaimTemplates "context" $) | nindent 4 }}
+    {{- end }}
   {{- end }}
 {{- end }}
 
