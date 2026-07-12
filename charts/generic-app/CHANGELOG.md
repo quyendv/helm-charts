@@ -5,6 +5,12 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-07-12
+
+### Added
+
+- **`persistence.extraVolumeClaimTemplates`**: append additional `volumeClaimTemplates` to a StatefulSet beyond the single default `data` claim. Each entry is a raw PVC template (rendered via `tplvalues.render`); mount them via `extraVolumeMounts` (name must match `metadata.name`). Backward compatible (empty by default); set `persistence.enabled=false` to define all claims here instead of the default `data` one.
+
 ## [1.11.0] - 2026-07-06
 
 ### Added

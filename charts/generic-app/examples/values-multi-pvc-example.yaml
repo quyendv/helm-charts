@@ -1,0 +1,37 @@
+# Example: StatefulSet with multiple volumeClaimTemplates (per-replica PVCs).
+# The default "data" claim comes from persistence.*; extra claims are appended
+# via persistence.extraVolumeClaimTemplates and mounted with extraVolumeMounts.
+
+kind: StatefulSet
+
+image:
+  registry: docker.io
+  repository: postgres
+  tag: "15"
+
+persistence:
+  enabled: true
+  size: 20Gi
+  mountPath: /var/lib/postgresql/data
+  extraVolumeClaimTemplates:
+    - metadata:
+        name: wal
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 10Gi
+    - metadata:
+        name: logs
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 5Gi
+
+# Mount each extra claim; name must match the volumeClaimTemplate metadata.name
+extraVolumeMounts:
+  - name: wal
+    mountPath: /var/lib/postgresql/wal
+  - name: logs
+    mountPath: /var/log/postgresql
