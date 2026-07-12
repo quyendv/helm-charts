@@ -83,6 +83,36 @@ helm uninstall my-app
 >
 > To remove retained data manually: `kubectl delete pvc -l app.kubernetes.io/instance=my-app`
 
+### PVC retention: Helm vs Argo CD
+
+Data is kept by default in both runtimes, but the mechanism differs.
+
+**Plain Helm** (`helm install` / `upgrade` / `uninstall`):
+
+- The `helm.sh/resource-policy: keep` annotation is read by the Helm client, so `helm uninstall` skips the PVC.
+
+**Argo CD** (renders with `helm template` — there is no Helm release, so `helm uninstall` never runs):
+
+- Argo CD **does** honor `helm.sh/resource-policy: keep`, treating it as equivalent to `argocd.argoproj.io/sync-options: Delete=false`.
+- That protects the PVC on **Application deletion** (cascade delete) — the analog of `helm uninstall`. ✅
+- It does **not** imply `Prune=false`. If the PVC is removed from the rendered output (e.g. you set `persistence.enabled=false`) while the Application still exists and auto-prune is on, Argo CD **will prune it**. To also prevent that, opt in via `persistence.annotations`:
+
+  ```yaml
+  persistence:
+    resourcePolicy: keep
+    annotations:
+      argocd.argoproj.io/sync-options: Prune=false
+  ```
+
+| Deletion path | Helm | Argo CD | Protected by `keep`? |
+| --- | --- | --- | --- |
+| Uninstall / App delete | `helm uninstall` | cascade delete | ✅ |
+| Removed from source (drift) | — (no such concept) | prune | ❌ — add `Prune=false` |
+
+> The chart intentionally does **not** auto-inject `argocd.argoproj.io/sync-options` annotations: `Delete=false` would be redundant with `keep`, and `Prune=false` is a stronger, different policy (it leaves the Application `OutOfSync` when a resource is legitimately removed) that should be an explicit opt-in.
+
+**Cleanest for a pre-existing PVC** (adopting a workload into the chart): set `persistence.existingClaim: <name>`. The chart then only *references* the PVC (it is not rendered or owned), so neither Helm nor Argo CD ever deletes or prunes it — and no ownership/adoption step is needed.
+
 ## Parameters
 
 ### Global parameters
@@ -286,6 +316,7 @@ helm uninstall my-app
 | `persistence.subPath`                              | The subdirectory of the volume to mount to                                                                                                              | `""`                |
 | `persistence.resourcePolicy`                       | Keep the chart-managed PVC on `helm uninstall` (Deployment only). Set `helm.sh/resource-policy` annotation; "keep" retains data, "" lets Helm delete it | `keep`              |
 | `persistence.persistentVolumeClaimRetentionPolicy` | StatefulSet PVC retention policy (Kubernetes 1.27+). Controls whether volumeClaimTemplates PVCs are deleted on StatefulSet scale-down/delete            | `{}`                |
+| `persistence.extraVolumeClaimTemplates`            | Additional StatefulSet volumeClaimTemplates, appended after the default `data` claim (StatefulSet only)                                                 | `[]`                |
 
 ### Volume Permissions parameters
 
@@ -862,6 +893,48 @@ extraEnvVarsSecrets:
 ```
 
 > Requires the [External Secrets Operator](https://external-secrets.io/) and a `SecretStore`/`ClusterSecretStore` in the cluster. The operator creates the target Secret asynchronously, so the Pod starts only once that Secret exists. Secret rotation in the provider does not auto-restart Pods — use a reloader controller if you need that. For multiple `ExternalSecret`s, `PushSecret`, or generators, use `extraDeploy`.
+
+### Example 10: StatefulSet with Multiple volumeClaimTemplates
+
+```yaml
+# values-multi-pvc.yaml
+kind: StatefulSet
+
+image:
+  repository: postgres
+  tag: '15'
+
+# Default "data" claim (mounted at persistence.mountPath)
+persistence:
+  enabled: true
+  size: 20Gi
+  mountPath: /var/lib/postgresql/data
+  # Extra per-replica claims, appended after "data"
+  extraVolumeClaimTemplates:
+    - metadata:
+        name: wal
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 10Gi
+    - metadata:
+        name: logs
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 5Gi
+
+# Mount the extra claims (name must match each volumeClaimTemplate's metadata.name)
+extraVolumeMounts:
+  - name: wal
+    mountPath: /var/lib/postgresql/wal
+  - name: logs
+    mountPath: /var/log/postgresql
+```
+
+> Each `volumeClaimTemplate` yields a per-replica PVC (`<name>-<pod>-N`). To define **only** custom claims (no default `data`), set `persistence.enabled: false` and list them all under `extraVolumeClaimTemplates`. Retention of these PVCs follows `persistence.persistentVolumeClaimRetentionPolicy` / Kubernetes defaults, same as the `data` claim.
 
 ## Best Practices
 

@@ -458,7 +458,7 @@ gatewayApi:
     ## @param gatewayApi.httpRoute.timeouts [object] Timeouts injected into the generated default rule (only when rules is empty). Ignored when rules is set — put timeouts per-rule there instead
     ## Gateway API HTTPRoute rule timeouts. request = total client-facing timeout;
     ## backendRequest = per-try timeout to the backend (must be <= request).
-    ## ref: https://gateway-api.sigs.k8s.io/api-types/httproute/#timeouts-optional
+    ## ref: https://gateway-api.sigs.k8s.io/reference/api-types/httproute/#timeouts-optional
     ## e.g:
     ## timeouts:
     ##   request: 180s
@@ -737,6 +737,22 @@ persistence:
   ##   whenScaled: Retain
   ##
   persistentVolumeClaimRetentionPolicy: {}
+  ## @param persistence.extraVolumeClaimTemplates [array] Additional StatefulSet volumeClaimTemplates, appended after the default `data` claim (StatefulSet only)
+  ## Each entry is a raw PVC template (rendered via tpl). Mount them into the
+  ## container/sidecars via `extraVolumeMounts` (name must match metadata.name).
+  ## The default `data` claim still comes from the persistence.* values above;
+  ## set persistence.enabled=false to define all claims here instead.
+  ## e.g:
+  ## extraVolumeClaimTemplates:
+  ##   - metadata:
+  ##       name: wal
+  ##     spec:
+  ##       accessModes: [ReadWriteOnce]
+  ##       resources:
+  ##         requests:
+  ##           storage: 5Gi
+  ##
+  extraVolumeClaimTemplates: []
 
 ## @section Volume Permissions parameters
 
