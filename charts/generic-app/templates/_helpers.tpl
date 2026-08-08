@@ -351,6 +351,25 @@ WARNING: serviceMonitor.enabled is true but port "{{ $port }}" is not found in s
 {{- end -}}
 
 {{/*
+Warn when a service port name has no matching container port.
+The Service targets ports by NAME, so every service.ports key must exist in the
+pod's container ports (containerPorts, or service.ports itself when it falls back).
+*/}}
+{{- define "generic-app.checkServicePortNames" -}}
+  {{- if and .Values.service.enabled .Values.containerPorts -}}
+    {{- $missing := list -}}
+    {{- range $name, $_ := .Values.service.ports -}}
+      {{- if not (hasKey $.Values.containerPorts $name) -}}
+        {{- $missing = append $missing $name -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if $missing -}}
+WARNING: service.ports name(s) "{{ join ", " $missing }}" have no matching entry in containerPorts. The Service targets ports by name, so it will not route to the pod until containerPorts declares the same name(s) (remember Helm merges maps: drop an unwanted default with `service.ports.<name>: null`).
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{/*
 Compile all warnings into a single message.
 */}}
 {{- define "generic-app.checkExternalSecret" -}}
@@ -372,6 +391,7 @@ Compile all warnings into a single message.
   {{- $messages := append $messages (include "generic-app.checkGatewayApiIngressConflict" .) -}}
   {{- $messages := append $messages (include "generic-app.checkDaemonSetAutoscaling" .) -}}
   {{- $messages := append $messages (include "generic-app.checkServiceMonitorPort" .) -}}
+  {{- $messages := append $messages (include "generic-app.checkServicePortNames" .) -}}
   {{- $messages := append $messages (include "generic-app.checkExternalSecret" .) -}}
   {{- $messages := without $messages "" -}}
   {{- $message := join "\n" $messages -}}
