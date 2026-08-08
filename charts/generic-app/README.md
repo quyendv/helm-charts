@@ -135,21 +135,21 @@ Data is kept by default in both runtimes, but the mechanism differs.
 
 ### Application parameters
 
-| Name                     | Description                                                                                                | Value          |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------- | -------------- |
-| `replicaCount`           | Number of replicas to deploy                                                                               | `1`            |
-| `kind`                   | Workload kind (Deployment, StatefulSet, or DaemonSet)                                                      | `Deployment`   |
-| `image.registry`         | Application image registry                                                                                 | `docker.io`    |
-| `image.repository`       | Application image repository                                                                               | `nginx`        |
-| `image.tag`              | Application image tag (immutable tags are recommended)                                                     | `1.25.3`       |
-| `image.pullPolicy`       | Application image pull policy                                                                              | `IfNotPresent` |
-| `image.pullSecrets`      | Application image pull secrets                                                                             | `[]`           |
-| `command`                | Override default container command (useful when using custom images)                                       | `[]`           |
-| `args`                   | Override default container args (useful when using custom images)                                          | `[]`           |
-| `containerPorts`         | Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty | `{}`           |
-| `extraEnvVars`           | Array with extra environment variables to add                                                              | `[]`           |
-| `extraEnvVarsConfigMaps` | List of existing ConfigMaps to load as environment variables                                               | `[]`           |
-| `extraEnvVarsSecrets`    | List of existing Secrets to load as environment variables                                                  | `[]`           |
+| Name                     | Description                                                                                                                            | Value          |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `replicaCount`           | Number of replicas to deploy                                                                                                           | `1`            |
+| `kind`                   | Workload kind (Deployment, StatefulSet, or DaemonSet)                                                                                  | `Deployment`   |
+| `image.registry`         | Application image registry                                                                                                             | `docker.io`    |
+| `image.repository`       | Application image repository                                                                                                           | `nginx`        |
+| `image.tag`              | Application image tag (immutable tags are recommended)                                                                                 | `1.25.3`       |
+| `image.pullPolicy`       | Application image pull policy                                                                                                          | `IfNotPresent` |
+| `image.pullSecrets`      | Application image pull secrets                                                                                                         | `[]`           |
+| `command`                | Override default container command (useful when using custom images)                                                                   | `[]`           |
+| `args`                   | Override default container args (useful when using custom images)                                                                      | `[]`           |
+| `containerPorts`         | Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty and service.enabled is true | `{}`           |
+| `extraEnvVars`           | Array with extra environment variables to add                                                                                          | `[]`           |
+| `extraEnvVarsConfigMaps` | List of existing ConfigMaps to load as environment variables                                                                           | `[]`           |
+| `extraEnvVarsSecrets`    | List of existing Secrets to load as environment variables                                                                              | `[]`           |
 
 ### Security parameters
 

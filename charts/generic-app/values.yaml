@@ -80,8 +80,13 @@ command: []
 ## @param args Override default container args (useful when using custom images)
 ##
 args: []
-## @param containerPorts Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty
+## @param containerPorts Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty and service.enabled is true
 ## Lets you expose container ports that are not published via the Service (e.g. metrics, admin).
+## When left empty it mirrors service.ports, but only while service.enabled is true — a
+## service-less workload (worker, consumer, cron) gets no container ports at all.
+## NOTE: the Service targets ports by NAME, so every service.ports key must also exist here
+## once you set this map. Helm merges maps, so remove an unwanted default with `null`
+## (e.g. `service.ports.http: null`) rather than an empty map.
 ## e.g:
 ## containerPorts:
 ##   http: 8080
