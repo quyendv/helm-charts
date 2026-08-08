@@ -5,6 +5,16 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-08-08
+
+### Changed
+
+- **`containerPorts` fallback is now scoped to `service.enabled`.** When `containerPorts` is empty the pod still mirrors `service.ports`, but only while the Service is enabled. Previously a service-less workload (worker, consumer, cron — `service.enabled: false`) inherited the chart's default `service.ports.http: 80` and rendered a meaningless `containerPort: 80`, which could only be suppressed with the `service.ports.http: null` merge trick. Rendering is unchanged for every chart user with `service.enabled: true`; workloads with the Service disabled and no explicit `containerPorts` lose their spurious port entry (a pod-template change, so expect one rollout on upgrade).
+
+### Added
+
+- **Service port name validation**: warns when `service.ports` contains a name that `containerPorts` does not declare. The Service targets ports by **name**, so such a mismatch silently produces a Service that never routes to the pod — the most common way an explicit `containerPorts` map breaks traffic.
+
 ## [1.12.0] - 2026-07-12
 
 ### Added
