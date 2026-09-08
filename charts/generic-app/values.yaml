@@ -844,6 +844,9 @@ externalSecret:
   ## @param externalSecret.apiVersion ExternalSecret API version (override for clusters on older External Secrets Operator releases, e.g. external-secrets.io/v1beta1)
   ##
   apiVersion: external-secrets.io/v1
+  ## @param externalSecret.name Name of the ExternalSecret object itself. Empty defaults to the chart fullname. Set this to adopt an ExternalSecret that already exists under a different name -- renaming it would delete and recreate the resource
+  ##
+  name: ""
   ## @param externalSecret.refreshInterval How often to sync values from the provider (e.g. 1h, 15m, 0 to disable)
   ##
   refreshInterval: 1h
