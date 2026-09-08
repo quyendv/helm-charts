@@ -5,6 +5,12 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-09-08
+
+### Added
+
+- **`externalSecret.name`**: name the generated `ExternalSecret` object independently of the chart fullname (empty keeps the previous behaviour, so rendering is unchanged for existing users). Previously only `externalSecret.target.name` -- the Secret produced -- was configurable, while the resource itself was locked to the fullname. That made the native integration unusable for adopting an `ExternalSecret` that already exists under a different name, a common case when migrating one off `extraDeploy` or when the secret is named after what it contains rather than after the app.
+
 ## [1.13.0] - 2026-08-08
 
 ### Changed
