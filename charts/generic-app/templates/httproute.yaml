@@ -58,8 +58,17 @@ spec:
       timeouts: {{- include "generic-app.tplvalues.render" (dict "value" .Values.gatewayApi.httpRoute.timeouts "context" $) | nindent 8 }}
       {{- end }}
       backendRefs:
-        - name: {{ include "generic-app.fullname" . }}
+        # group, kind and weight are the Gateway API schema defaults for a Service backend. They
+        # are emitted explicitly because the API server fills them in on the stored object, so a
+        # manifest that omits them never matches what is running: GitOps tools that diff desired
+        # against live report the route as permanently drifted. The alternative - telling the tool
+        # to ignore these paths - is worse, because ignore rules that point inside an array element
+        # can mask real changes to the other fields of that same element.
+        - group: ""
+          kind: Service
+          name: {{ include "generic-app.fullname" . }}
           port: {{ index .Values.service.ports "http" }}
+          weight: 1
     {{- end }}
     {{- if .Values.gatewayApi.httpRoute.extraRules }}
     {{- tpl .Values.gatewayApi.httpRoute.extraRules . | nindent 4 }}

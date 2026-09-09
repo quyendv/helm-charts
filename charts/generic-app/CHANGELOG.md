@@ -5,6 +5,14 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-09-09
+
+### Changed
+
+- **`HTTPRoute` backend references now render the Gateway API schema defaults explicitly** (`group: ""`, `kind: Service`, `weight: 1`). The API server fills these in on the stored object, so a manifest that omitted them never matched what was running: any tool that diffs the desired manifest against the live resource reported every `HTTPRoute` produced by this chart as permanently drifted, drowning real drift in noise. This is a no-op semantically -- the rendered route resolves to exactly the same backend -- but it does change the rendered YAML, so a diff against a previous render will show the three added fields.
+
+  Suppressing the noise on the consumer side is the worse option and is why this belongs in the chart: an ignore rule has to point inside an array element (`.spec.rules[].backendRefs[]`), and an ignore rule scoped that way can also mask genuine changes to the sibling fields of that same element, including `name` and `port`.
+
 ## [1.14.0] - 2026-09-08
 
 ### Added
