@@ -3,6 +3,27 @@ entries:
   generic-app:
   - apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-09-09T04:48:24.577393026Z"
+    description: A generic Helm chart that can be used for various applications
+    digest: eb9985343bd58c54b6b9f94d4f04bb1f3d5a5eddd2abe0d3a7bff760c78c6e5e
+    home: https://github.com/quyendv/helm-charts
+    icon: https://raw.githubusercontent.com/quyendv/helm-charts/develop/images/icon.svg
+    keywords:
+    - generic
+    - application
+    - microservice
+    maintainers:
+    - email: xxx@gmail.com
+      name: quyendv
+    name: generic-app
+    sources:
+    - https://github.com/quyendv/helm-charts
+    type: application
+    urls:
+    - https://github.com/quyendv/helm-charts/releases/download/generic-app-1.15.0/generic-app-1.15.0.tgz
+    version: 1.15.0
+  - apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-09-08T03:38:30.90021383Z"
     description: A generic Helm chart that can be used for various applications
     digest: 65f37288ccacab654b73a45fe17b261e50991889ca914097a0ae944df1eb9f22
@@ -400,4 +421,4 @@ entries:
     urls:
     - https://github.com/quyendv/helm-charts/releases/download/generic-app-1.0.0/generic-app-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-08T03:38:30.900303172Z"
+generated: "2026-09-09T04:48:24.577506625Z"
