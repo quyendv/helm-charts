@@ -5,6 +5,15 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-10-22
+
+### Changed
+
+- `appVersion` is 0.6.3, so the image tag defaults to platform-backup 0.6.3.
+  0.6.0 failed to verify PostgreSQL dumps larger than a pipe buffer, and 0.6.1
+  could not download from some S3-compatible providers; releases that set
+  `image.tag` are unaffected.
+
 ## [0.1.0] - 2026-10-22
 
 First release: one scheduled backup of one data store per release, running the

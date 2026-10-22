@@ -2,8 +2,8 @@ apiVersion: v2
 name: platform-backup
 description: A scheduled backup of one PostgreSQL, MongoDB, Redis or SQLite store to S3-compatible storage
 type: application
-version: 0.1.0
-appVersion: '0.6.0'
+version: 0.1.1
+appVersion: "0.6.3"
 icon: https://raw.githubusercontent.com/quyendv/helm-charts/main/images/icon.svg
 keywords:
   - backup
