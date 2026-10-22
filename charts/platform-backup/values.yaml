@@ -48,7 +48,7 @@ keepLocal: 1
 ## @param verifyReadback Download the uploaded artifact again and check its checksum (VERIFY_READBACK)
 ##
 verifyReadback: false
-## @param host Name reported for the backed-up host in notifications (BACKUP_HOST); empty leaves the image default
+## @param host Where the backup runs, such as a cluster name (BACKUP_HOST): recorded in each run's _COMPLETE marker, its state file and notifications. Empty leaves the container hostname
 ##
 host: ""
 ## @param env [object] Extra environment variables as a name: value map, rendered sorted (e.g. SQLITE_PATH, NOTIFY_ON)

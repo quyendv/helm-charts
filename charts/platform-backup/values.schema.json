@@ -86,7 +86,7 @@
       "type": "boolean"
     },
     "host": {
-      "description": "Host name the image reports (BACKUP_HOST)",
+      "description": "Where the backup runs (BACKUP_HOST), recorded in the run marker, state file and notifications",
       "type": "string"
     },
     "env": {

@@ -176,24 +176,24 @@ dependencies:
 
 ### Backup parameters
 
-| Name                | Description                                                                                                          | Value                             |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `engine`            | Data store to back up: postgresql, mongodb, redis or sqlite. Selects the image                                       | `postgresql`                      |
-| `image.registry`    | Registry and path the per-engine images live under                                                                   | `ghcr.io/quyendv/platform-backup` |
-| `image.tag`         | Image release tag (empty uses the chart appVersion)                                                                  | `""`                              |
-| `image.variant`     | Image variant appended to the tag: pg14..pg17 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite  | `""`                              |
-| `image.pullPolicy`  | Image pull policy                                                                                                    | `IfNotPresent`                    |
-| `nameOverride`      | String to partially override the chart name                                                                          | `""`                              |
-| `fullnameOverride`  | String to fully override the release fullname. The resulting name must contain "backup" and be at most 52 characters | `""`                              |
-| `schedule`          | Cron schedule of the backup (REQUIRED)                                                                               | `""`                              |
-| `timeZone`          | Time zone the schedule is read in                                                                                    | `UTC`                             |
-| `suspend`           | Suspend the schedule (Jobs already started keep running)                                                             | `false`                           |
-| `concurrencyPolicy` | What to do when a run is still going at the next tick (Forbid, Allow or Replace)                                     | `Forbid`                          |
-| `keepLocal`         | Runs kept in the scratch directory (KEEP_LOCAL); 0 disables pruning                                                  | `1`                               |
-| `verifyReadback`    | Download the uploaded artifact again and check its checksum (VERIFY_READBACK)                                        | `false`                           |
-| `host`              | Name reported for the backed-up host in notifications (BACKUP_HOST); empty leaves the image default                  | `""`                              |
-| `env`               | Extra environment variables as a name: value map, rendered sorted (e.g. SQLITE_PATH, NOTIFY_ON)                      | `{}`                              |
-| `extraEnv`          | Extra environment variables as full EnvVar entries (valueFrom etc.), rendered after env                              | `[]`                              |
+| Name                | Description                                                                                                                                                                 | Value                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `engine`            | Data store to back up: postgresql, mongodb, redis or sqlite. Selects the image                                                                                              | `postgresql`                      |
+| `image.registry`    | Registry and path the per-engine images live under                                                                                                                          | `ghcr.io/quyendv/platform-backup` |
+| `image.tag`         | Image release tag (empty uses the chart appVersion)                                                                                                                         | `""`                              |
+| `image.variant`     | Image variant appended to the tag: pg14..pg17 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite                                                         | `""`                              |
+| `image.pullPolicy`  | Image pull policy                                                                                                                                                           | `IfNotPresent`                    |
+| `nameOverride`      | String to partially override the chart name                                                                                                                                 | `""`                              |
+| `fullnameOverride`  | String to fully override the release fullname. The resulting name must contain "backup" and be at most 52 characters                                                        | `""`                              |
+| `schedule`          | Cron schedule of the backup (REQUIRED)                                                                                                                                      | `""`                              |
+| `timeZone`          | Time zone the schedule is read in                                                                                                                                           | `UTC`                             |
+| `suspend`           | Suspend the schedule (Jobs already started keep running)                                                                                                                    | `false`                           |
+| `concurrencyPolicy` | What to do when a run is still going at the next tick (Forbid, Allow or Replace)                                                                                            | `Forbid`                          |
+| `keepLocal`         | Runs kept in the scratch directory (KEEP_LOCAL); 0 disables pruning                                                                                                         | `1`                               |
+| `verifyReadback`    | Download the uploaded artifact again and check its checksum (VERIFY_READBACK)                                                                                               | `false`                           |
+| `host`              | Where the backup runs, such as a cluster name (BACKUP_HOST): recorded in each run's _COMPLETE marker, its state file and notifications. Empty leaves the container hostname | `""`                              |
+| `env`               | Extra environment variables as a name: value map, rendered sorted (e.g. SQLITE_PATH, NOTIFY_ON)                                                                             | `{}`                              |
+| `extraEnv`          | Extra environment variables as full EnvVar entries (valueFrom etc.), rendered after env                                                                                     | `[]`                              |
 
 ### Object storage parameters
 
