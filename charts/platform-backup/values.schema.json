@@ -1,0 +1,396 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "platform-backup values",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "global": {
+      "description": "Values shared by a parent chart; ignored by this chart",
+      "type": "object"
+    },
+    "enabled": {
+      "description": "Read by a parent chart's dependency condition; ignored by this chart",
+      "type": "boolean"
+    },
+    "engine": {
+      "description": "Data store to back up; selects the image",
+      "enum": [
+        "postgresql",
+        "mongodb",
+        "redis",
+        "sqlite"
+      ]
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "registry": {
+          "description": "Registry and path the per-engine images live under",
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "description": "Image release tag (empty uses the chart appVersion)",
+          "type": "string"
+        },
+        "variant": {
+          "description": "Image variant appended to the tag",
+          "type": "string"
+        },
+        "pullPolicy": {
+          "description": "Image pull policy",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "nameOverride": {
+      "description": "String to partially override the chart name",
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "description": "String to fully override the release fullname",
+      "type": "string"
+    },
+    "schedule": {
+      "description": "Cron schedule of the backup (REQUIRED)",
+      "type": "string"
+    },
+    "timeZone": {
+      "description": "Time zone the schedule is read in",
+      "type": "string"
+    },
+    "suspend": {
+      "description": "Suspend the schedule",
+      "type": "boolean"
+    },
+    "concurrencyPolicy": {
+      "description": "What to do when a run is still going at the next tick",
+      "enum": [
+        "Forbid",
+        "Allow",
+        "Replace"
+      ]
+    },
+    "keepLocal": {
+      "description": "Runs kept in the scratch directory (KEEP_LOCAL)",
+      "type": "integer",
+      "minimum": 0
+    },
+    "verifyReadback": {
+      "description": "Download the uploaded artifact again and check its checksum (VERIFY_READBACK)",
+      "type": "boolean"
+    },
+    "host": {
+      "description": "Host name the image reports (BACKUP_HOST)",
+      "type": "string"
+    },
+    "env": {
+      "description": "Extra environment variables as a name: value map",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean"
+        ]
+      }
+    },
+    "extraEnv": {
+      "description": "Extra environment variables as full EnvVar entries",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "s3": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prefix": {
+          "description": "Key prefix inside the bucket (S3_PREFIX, REQUIRED)",
+          "type": "string"
+        },
+        "keepRemote": {
+          "description": "Runs kept in S3 (KEEP_REMOTE, REQUIRED); 0 disables pruning",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "existingSecret": {
+          "description": "Existing Secret with the AWS_* and S3_BUCKET keys",
+          "type": "string"
+        },
+        "externalSecret": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Create the S3 Secret from an ExternalSecret",
+              "type": "boolean"
+            },
+            "refreshInterval": {
+              "description": "How often the operator refreshes the Secret",
+              "type": "string"
+            },
+            "secretStoreRef": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "description": "Kind of the secret store",
+                  "enum": [
+                    "ClusterSecretStore",
+                    "SecretStore"
+                  ]
+                },
+                "name": {
+                  "description": "Name of the secret store",
+                  "type": "string"
+                }
+              }
+            },
+            "remoteKey": {
+              "description": "Key in the secret store that holds the S3 settings",
+              "type": "string"
+            },
+            "properties": {
+              "description": "Environment variable name in the Secret -> property of the remote key",
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "existingSecret": {
+          "description": "Existing Secret with the data store's credentials",
+          "type": "string"
+        },
+        "externalSecret": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Create the target Secret from an ExternalSecret",
+              "type": "boolean"
+            },
+            "refreshInterval": {
+              "description": "How often the operator refreshes the Secret",
+              "type": "string"
+            },
+            "secretStoreRef": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "description": "Kind of the secret store",
+                  "enum": [
+                    "ClusterSecretStore",
+                    "SecretStore"
+                  ]
+                },
+                "name": {
+                  "description": "Name of the secret store",
+                  "type": "string"
+                }
+              }
+            },
+            "data": {
+              "description": "ExternalSecret spec.data, passed through verbatim",
+              "type": "array"
+            },
+            "dataFrom": {
+              "description": "ExternalSecret spec.dataFrom, passed through verbatim",
+              "type": "array"
+            },
+            "template": {
+              "description": "ExternalSecret spec.target.template, passed through verbatim",
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "fileStore": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "Mount the data store's PersistentVolumeClaim and run next to the pod that owns it",
+          "type": "boolean"
+        },
+        "claimName": {
+          "description": "PersistentVolumeClaim holding the data store",
+          "type": "string"
+        },
+        "mountPath": {
+          "description": "Where the claim is mounted in the container",
+          "type": "string",
+          "pattern": "^/"
+        },
+        "readOnly": {
+          "description": "Mount the claim read-only",
+          "type": "boolean"
+        },
+        "ownerSelector": {
+          "description": "matchLabels of the pod that owns the claim",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "scratch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sizeLimit": {
+          "description": "Size limit of the emptyDir mounted at /backup (empty: none)",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backoffLimit": {
+          "description": "Retries of a failed run before the Job fails",
+          "type": "integer",
+          "minimum": 0
+        },
+        "activeDeadlineSeconds": {
+          "description": "Seconds a run may take before it is killed (null: no limit)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "ttlSecondsAfterFinished": {
+          "description": "Seconds a finished Job is kept (null: kept until the history limits remove it)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "successfulJobsHistoryLimit": {
+          "description": "Successful Jobs kept by the CronJob",
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedJobsHistoryLimit": {
+          "description": "Failed Jobs kept by the CronJob",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "resources": {
+      "description": "Container resource requests and limits",
+      "type": "object"
+    },
+    "podLabels": {
+      "description": "Extra labels for the Jobs and their pods",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "podAnnotations": {
+      "description": "Annotations for the pods",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "commonLabels": {
+      "description": "Labels added to every object",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "imagePullSecrets": {
+      "description": "Names of Secrets used to pull the image",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "serviceAccountName": {
+      "description": "ServiceAccount the pods run as",
+      "type": "string"
+    },
+    "automountServiceAccountToken": {
+      "description": "Mount the ServiceAccount token in the pods",
+      "type": "boolean"
+    },
+    "nodeSelector": {
+      "description": "Node labels for pod assignment",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "tolerations": {
+      "description": "Tolerations for pod assignment",
+      "type": "array"
+    },
+    "affinity": {
+      "description": "Affinity for pod assignment",
+      "type": "object"
+    },
+    "podSecurityContext": {
+      "description": "Pod security context",
+      "type": "object"
+    },
+    "securityContext": {
+      "description": "Container security context",
+      "type": "object"
+    },
+    "extraVolumes": {
+      "description": "Extra volumes for the pods",
+      "type": "array"
+    },
+    "extraVolumeMounts": {
+      "description": "Extra volume mounts for the container",
+      "type": "array"
+    }
+  }
+}

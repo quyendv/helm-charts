@@ -1,0 +1,38 @@
+# PostgreSQL 17, with both Secrets created by the External Secrets Operator.
+fullnameOverride: app-postgresql-backup
+engine: postgresql
+image:
+  variant: pg17
+schedule: "0 */4 * * *"
+host: app-postgresql
+verifyReadback: true
+s3:
+  prefix: backups/app/postgresql
+  keepRemote: 42
+  externalSecret:
+    enabled: true
+    secretStoreRef:
+      name: secret-store
+    remoteKey: secret/backup/s3
+target:
+  externalSecret:
+    enabled: true
+    secretStoreRef:
+      name: secret-store
+    data:
+      - secretKey: POSTGRES_PASSWORD
+        remoteRef:
+          key: secret/app/postgresql
+          property: password
+env:
+  POSTGRES_HOST: app-postgresql.app.svc.cluster.local
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: app
+  POSTGRES_USER: backup
+  NOTIFY_ON: failure
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi

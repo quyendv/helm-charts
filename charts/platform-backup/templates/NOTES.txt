@@ -1,0 +1,16 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+{{ .Values.engine }} backup scheduled: "{{ .Values.schedule }}" ({{ .Values.timeZone | default "controller time zone" }})
+  image:  {{ include "platform-backup.image" . }}
+{{- $keep := include "platform-backup.intString" .Values.s3.keepRemote }}
+  target: s3://<S3_BUCKET>/{{ .Values.s3.prefix }}, {{ if eq $keep "0" }}keeping every run (KEEP_REMOTE=0 disables pruning){{ else }}keeping the newest {{ $keep }} runs{{ end }}
+{{- if .Values.suspend }}
+  The schedule is SUSPENDED.
+{{- end }}
+
+Run a backup now and follow it:
+
+  kubectl create job --from=cronjob/{{ include "platform-backup.fullname" . }} {{ include "platform-backup.fullname" . }}-manual -n {{ .Release.Namespace }}
+  kubectl logs -f job/{{ include "platform-backup.fullname" . }}-manual -n {{ .Release.Namespace }}

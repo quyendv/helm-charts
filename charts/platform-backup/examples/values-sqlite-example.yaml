@@ -1,0 +1,35 @@
+# Example: back up an application's SQLite database nightly.
+# The database is a file on the application's ReadWriteOnce volume, so the job
+# mounts that claim and is scheduled on the node of the pod that owns it.
+#
+#   helm install app-sqlite-backup quyendv/platform-backup -f values-sqlite-example.yaml
+
+engine: sqlite
+schedule: "0 3 * * *"
+
+s3:
+  prefix: backups/app/sqlite
+  keepRemote: 30
+  # An existing Secret with AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+  # AWS_ENDPOINT_URL_S3, AWS_REGION and S3_BUCKET.
+  existingSecret: backup-s3
+
+fileStore:
+  enabled: true
+  claimName: app-data                  # the application's PVC
+  mountPath: /data
+  ownerSelector:                       # labels of the pod that mounts it
+    app.kubernetes.io/instance: app
+
+env:
+  SQLITE_PATH: /data/app.db            # mountPath + the database file
+  NOTIFY_ON: failure
+
+# The sqlite backend runs as root with only these capabilities, so that it can
+# take part in the application's locking and leave files the application owns.
+securityContext:
+  runAsUser: 0
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+    add: [CHOWN, DAC_OVERRIDE, FOWNER]

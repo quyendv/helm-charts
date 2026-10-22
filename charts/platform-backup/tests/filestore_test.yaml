@@ -1,0 +1,95 @@
+suite: file store
+templates:
+  - templates/cronjob.yaml
+set:
+  engine: sqlite
+  schedule: "0 2 * * *"
+  s3: {prefix: backups/app, keepRemote: 30, existingSecret: backup-s3}
+  fileStore:
+    enabled: true
+    claimName: app-data
+    ownerSelector: {app.kubernetes.io/instance: app}
+tests:
+  - it: schedules the job on the node of the pod that owns the volume
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.affinity
+          value:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels: {app.kubernetes.io/instance: app}
+                  topologyKey: kubernetes.io/hostname
+  - it: mounts the claim read-write at /data by default
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim: {claimName: app-data}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          content: {name: data, mountPath: /data}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          content: {name: backup, mountPath: /backup}
+  - it: mounts the claim read-only at mountPath when asked
+    set:
+      fileStore.mountPath: /var/lib/app
+      fileStore.readOnly: true
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim: {claimName: app-data, readOnly: true}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          content: {name: data, mountPath: /var/lib/app, readOnly: true}
+  - it: keeps the user's affinity and adds the owner term to it
+    set:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms: [{matchExpressions: [{key: zone, operator: In, values: [a]}]}]
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector: {matchLabels: {role: cache}}
+              topologyKey: kubernetes.io/hostname
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 10
+              podAffinityTerm: {labelSelector: {matchLabels: {role: web}}, topologyKey: kubernetes.io/hostname}
+    asserts:
+      - exists:
+          path: spec.jobTemplate.spec.template.spec.affinity.nodeAffinity
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution
+          value:
+            - labelSelector: {matchLabels: {role: cache}}
+              topologyKey: kubernetes.io/hostname
+            - labelSelector: {matchLabels: {app.kubernetes.io/instance: app}}
+              topologyKey: kubernetes.io/hostname
+      - lengthEqual:
+          path: spec.jobTemplate.spec.template.spec.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution
+          count: 1
+  - it: requires a claim name
+    set:
+      fileStore.claimName: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "fileStore.claimName is required"
+  - it: requires the owner's labels
+    set:
+      fileStore.ownerSelector: null
+    asserts:
+      - failedTemplate:
+          errorPattern: "fileStore.ownerSelector is required"
+  - it: mounts nothing and adds no affinity when disabled
+    set:
+      fileStore.enabled: false
+    asserts:
+      - notExists:
+          path: spec.jobTemplate.spec.template.spec.affinity
+      - lengthEqual:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          count: 1

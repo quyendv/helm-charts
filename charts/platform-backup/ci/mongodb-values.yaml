@@ -1,0 +1,21 @@
+# MongoDB with both Secrets already in the namespace, and KEEP_REMOTE=0 (never prune).
+fullnameOverride: app-mongodb-backup
+engine: mongodb
+schedule: "30 1 * * *"
+timeZone: Europe/Berlin
+s3:
+  prefix: backups/app/mongodb
+  keepRemote: 0
+  existingSecret: backup-s3
+target:
+  existingSecret: app-mongodb-backup-credentials # holds MONGODB_URI
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+job:
+  activeDeadlineSeconds: null

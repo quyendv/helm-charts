@@ -1,0 +1,29 @@
+# Redis 8, the connection URL assembled by an ExternalSecret template.
+nameOverride: redis-backup
+engine: redis
+image:
+  variant: redis8
+schedule: "15 * * * *"
+suspend: true
+s3:
+  prefix: backups/app/redis
+  keepRemote: 24
+  existingSecret: backup-s3
+target:
+  externalSecret:
+    enabled: true
+    refreshInterval: 30m
+    secretStoreRef:
+      kind: SecretStore
+      name: app-store
+    data:
+      - secretKey: password
+        remoteRef:
+          key: secret/app/redis
+          property: password
+    template:
+      engineVersion: v2
+      data:
+        REDIS_URL: "redis://:{{ .password }}@app-redis-master:6379/0"
+scratch:
+  sizeLimit: 20Gi
