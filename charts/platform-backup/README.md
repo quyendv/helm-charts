@@ -56,10 +56,10 @@ defaults to the chart's `appVersion`. Pick the variant that matches the server:
 
 | `engine`     | `image.variant`             | Example image                                            |
 | ------------ | --------------------------- | -------------------------------------------------------- |
-| `postgresql` | `pg14`, `pg15`, `pg16`, `pg17` | `ghcr.io/quyendv/platform-backup/postgresql:0.6.0-pg17` |
-| `mongodb`    | *(empty)*                   | `ghcr.io/quyendv/platform-backup/mongodb:0.6.0`          |
-| `redis`      | `redis7`, `redis8`          | `ghcr.io/quyendv/platform-backup/redis:0.6.0-redis8`     |
-| `sqlite`     | *(empty)*                   | `ghcr.io/quyendv/platform-backup/sqlite:0.6.0`           |
+| `postgresql` | `pg14`, `pg15`, `pg16`, `pg17` | `ghcr.io/quyendv/platform-backup/postgresql:0.6.3-pg17` |
+| `mongodb`    | *(empty)*                   | `ghcr.io/quyendv/platform-backup/mongodb:0.6.3`          |
+| `redis`      | `redis7`, `redis8`          | `ghcr.io/quyendv/platform-backup/redis:0.6.3-redis8`     |
+| `sqlite`     | *(empty)*                   | `ghcr.io/quyendv/platform-backup/sqlite:0.6.3`           |
 
 ### Environment
 
