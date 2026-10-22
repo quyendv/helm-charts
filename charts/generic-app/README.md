@@ -23,11 +23,12 @@ A comprehensive, production-ready Helm chart that can be used as a template for 
 - ✅ **Init containers** and **Sidecars**
 - ✅ **Extra volumes** and **volume mounts**
 - ✅ **Extra Deploy** - Deploy additional Kubernetes resources with full templating support
+- ✅ **Values schema** (`values.schema.json`) - typos and invalid values fail at install time, not silently
 
 ## Prerequisites
 
-- Kubernetes 1.19+
-- Helm 3.2.0+
+- Kubernetes 1.25+
+- Helm 3.14+ or Helm 4
 
 ## Quick Start
 
@@ -40,22 +41,47 @@ helm repo update
 
 ### Install Chart
 
-```bash
-# Install with default values
-helm install my-app quyendv/generic-app
+The chart has no default image and exposes no port by default: `image.repository` and
+`image.tag` (or `image.digest`) are required, and a Service is created only when you ask for one.
 
+```bash
 # Install with custom values
 helm install my-app quyendv/generic-app -f my-values.yaml
 
 # Install specific version
-helm install my-app quyendv/generic-app --version 1.8.0
+helm install my-app quyendv/generic-app --version 2.0.0
 
-# Install with inline values
+# Install with inline values: an nginx container behind a ClusterIP Service on port 80
 helm install my-app quyendv/generic-app \
   --set image.repository=nginx \
-  --set image.tag=1.25.3 \
-  --set service.type=LoadBalancer
+  --set image.tag=1.27.3 \
+  --set service.enabled=true \
+  --set service.ports.http=80
 ```
+
+### Ports and Services
+
+- `service.ports` maps a port **name** to the port the Service publishes. Each name is also
+  the Service `targetPort`, so it must match a container port name.
+- `containerPorts` maps names to the ports the container listens on. Leave it empty and the
+  container mirrors `service.ports`; set it when the numbers differ or when the pod listens on
+  ports the Service does not publish:
+
+  ```yaml
+  service:
+    enabled: true
+    ports:
+      http: 80        # clients call <service>:80
+  containerPorts:
+    http: 8080        # the app listens on 8080
+    admin: 9000       # reachable on the pod only
+  ```
+
+- Ingress and Gateway API route to the `http` port, or to the only port when there is one.
+  With several ports and none named `http`, name the one to use in `ingress.servicePort` /
+  `gatewayApi.httpRoute.servicePort`.
+- A worker with no Service needs no port configuration at all.
+
 
 ### Install from Source
 
@@ -78,7 +104,7 @@ helm uninstall my-app
 
 > **Data is retained by default.** `helm uninstall` does **not** delete your PersistentVolumeClaims:
 >
-> - **Deployment**: the chart-managed PVC carries `helm.sh/resource-policy: keep` (`persistence.resourcePolicy`, default `keep`). Set `persistence.resourcePolicy=""` to let Helm delete it on uninstall.
+> - **Deployment / DaemonSet**: the chart-managed PVC carries `helm.sh/resource-policy: keep` (`persistence.resourcePolicy`, default `keep`). Set `persistence.resourcePolicy=""` to let Helm delete it on uninstall.
 > - **StatefulSet**: PVCs come from `volumeClaimTemplates` and are governed by Kubernetes, which retains them by default. Use `persistence.persistentVolumeClaimRetentionPolicy` (k8s 1.27+) to opt into automatic cleanup.
 >
 > To remove retained data manually: `kubectl delete pvc -l app.kubernetes.io/instance=my-app`
@@ -500,6 +526,7 @@ certManager:
     email: admin@example.com
 
 service:
+  enabled: true
   type: ClusterIP
   ports:
     http: 8080
@@ -544,6 +571,7 @@ image:
   tag: '15'
 
 service:
+  enabled: true
   ports:
     postgres: 5432
 
@@ -578,6 +606,10 @@ helm install postgres ./charts/generic-app -f charts/generic-app/examples/values
 image:
   repository: myapp
   tag: '2.0.0'
+
+# The probes below target the port named "http"
+containerPorts:
+  http: 8080
 
 configMaps:
   enabled: true
@@ -653,6 +685,10 @@ networkPolicy:
         - protocol: TCP
           port: 8080
 
+# The Role is useless without an API token in the pod (off by default)
+serviceAccount:
+  automountServiceAccountToken: true
+
 rbac:
   create: true
   rules:
@@ -699,6 +735,9 @@ replicaCount: 3
 image:
   repository: myapp
   tag: '1.0.0'
+
+containerPorts:
+  http: 8080
 
 # Zero-downtime rolling update strategy
 # Ensures at least one pod is always available
@@ -783,20 +822,27 @@ extraVolumeMounts:
 
 ### Example 8: Deploy Extra Resources (Jobs, CronJobs, etc.)
 
+Items that template a **mapping** (labels, selectors) must be block-scalar strings (`- |`);
+plain map items can only template scalar fields. See the `extraDeploy` parameter for details.
+
 ```yaml
 # values-extra-deploy.yaml
 image:
   repository: myapp
   tag: '1.0.0'
 
-# Deploy additional Kubernetes resources
+# Values your own templates read go under extraValues (the schema rejects unknown top-level keys)
+extraValues:
+  databaseUrl: postgres://db:5432/mydb
+
 extraDeploy:
-  # Database migration job (runs before app starts)
-  - apiVersion: batch/v1
+  # Database migration job (runs before the app is upgraded)
+  - |
+    apiVersion: batch/v1
     kind: Job
     metadata:
-      name: '{{ include "generic-app.fullname" . }}-migration'
-      namespace: '{{ include "generic-app.namespace" . }}'
+      name: {{ include "generic-app.fullname" . }}-migration
+      namespace: {{ include "generic-app.namespace" . }}
       labels: {{- include "generic-app.labels" . | nindent 8 }}
       annotations:
         "helm.sh/hook": pre-install,pre-upgrade
@@ -805,64 +851,42 @@ extraDeploy:
     spec:
       backoffLimit: 3
       template:
-        metadata:
-          name: '{{ include "generic-app.fullname" . }}-migration'
         spec:
           restartPolicy: OnFailure
           containers:
-          - name: migration
-            image: '{{ include "generic-app.image" . }}'
-            command: ["npm", "run", "migrate"]
-            env:
-            - name: DATABASE_URL
-              value: "postgres://db:5432/mydb"
+            - name: migration
+              image: {{ include "generic-app.image" . }}
+              command: ["npm", "run", "migrate"]
+              env:
+                - name: DATABASE_URL
+                  value: {{ .Values.extraValues.databaseUrl | quote }}
 
-  # Daily backup cronjob
+  # Daily backup CronJob (fully static apart from scalar fields)
   - apiVersion: batch/v1
     kind: CronJob
     metadata:
       name: '{{ include "generic-app.fullname" . }}-backup'
-      namespace: '{{ include "generic-app.namespace" . }}'
-      labels: {{- include "generic-app.labels" . | nindent 8 }}
     spec:
-      schedule: "0 2 * * *"  # Daily at 2 AM
-      successfulJobsHistoryLimit: 3
-      failedJobsHistoryLimit: 1
+      schedule: "0 2 * * *"
       jobTemplate:
         spec:
           template:
             spec:
               restartPolicy: OnFailure
               containers:
-              - name: backup
-                image: postgres:15
-                command:
-                - /bin/sh
-                - -c
-                - pg_dump -h db -U postgres mydb > /backups/backup-$(date +%Y%m%d).sql
-                volumeMounts:
-                - name: backup-storage
-                  mountPath: /backups
+                - name: backup
+                  image: postgres:16
+                  command: ["/bin/sh", "-c", "pg_dump -h db -U postgres mydb > /backups/backup-$(date +%Y%m%d).sql"]
+                  volumeMounts:
+                    - name: backup-storage
+                      mountPath: /backups
               volumes:
-              - name: backup-storage
-                persistentVolumeClaim:
-                  claimName: backup-pvc
-
-  # Prometheus ServiceMonitor for monitoring
-  - apiVersion: monitoring.coreos.com/v1
-    kind: ServiceMonitor
-    metadata:
-      name: '{{ include "generic-app.fullname" . }}'
-      namespace: '{{ include "generic-app.namespace" . }}'
-      labels: {{- include "generic-app.labels" . | nindent 8 }}
-    spec:
-      selector:
-        matchLabels: {{- include "generic-app.selectorLabels" . | nindent 10 }}
-      endpoints:
-      - port: http
-        path: /metrics
-        interval: 30s
+                - name: backup-storage
+                  persistentVolumeClaim:
+                    claimName: backup-pvc
 ```
+
+> For metrics, prefer the built-in `serviceMonitor.*` values over a hand-written ServiceMonitor.
 
 Install:
 
@@ -988,9 +1012,15 @@ documented-but-commented options, and `## @section` to group a table.
 ```
 generic-app/
 ├── Chart.yaml              # Chart metadata
+├── CHANGELOG.md            # Release notes (also used as the GitHub release body)
 ├── values.yaml             # Default configuration values
+├── values.schema.json      # JSON Schema for values.yaml
+├── ci/                     # Render fixtures linted and validated in CI (not packaged)
+├── tests/                  # helm-unittest suites (not packaged)
+├── examples/               # Documented example values (not packaged)
 ├── templates/
 │   ├── _helpers.tpl        # Template helpers
+│   ├── _pod.tpl            # Pod template shared by all workload kinds
 │   ├── deployment.yaml     # Deployment resource
 │   ├── statefulset.yaml    # StatefulSet resource
 │   ├── daemonset.yaml      # DaemonSet resource
@@ -1019,6 +1049,22 @@ generic-app/
 ```
 
 ## Upgrading
+
+### To 2.0.0
+
+2.0.0 removes the chart's implicit defaults (image, Service port 80) and fixes several
+rendering bugs. Most configurations need one or two value changes:
+
+- Set `image.repository` and `image.tag` explicitly.
+- Set `service.enabled: true` and declare `service.ports` if you relied on the default `http: 80`.
+- Set `serviceAccount.automountServiceAccountToken: true` if the app calls the Kubernetes API.
+- **StatefulSet with persistence**: the `volumeClaimTemplates` labels changed, and that field
+  is immutable. Delete the StatefulSet object while keeping its pods and PVCs, then upgrade:
+  `kubectl delete statefulset <name> --cascade=orphan`.
+
+The full list, with the reason for each change, is in the [CHANGELOG](./CHANGELOG.md#200---2026-10-22).
+
+### Commands
 
 ```bash
 # Upgrade to latest version
@@ -1056,6 +1102,12 @@ kubectl logs -l app.kubernetes.io/name=generic-app
 
 ### Common Issues
 
+**Issue**: `values don't meet the specifications of the schema(s)`
+
+- The message names the offending path. An "additional properties ... not allowed" error is
+  usually a typo (e.g. `service.port` instead of `service.ports`); values your own templates
+  read belong under `extraValues`
+
 **Issue**: Image pull errors
 
 - Check `image.repository`, `image.tag`, and `image.pullSecrets`
@@ -1085,7 +1137,7 @@ spec:
   source:
     repoURL: https://quyendv.github.io/helm-charts
     chart: generic-app
-    targetRevision: 1.8.0
+    targetRevision: 2.0.0
     helm:
       values: |
         image:
@@ -1099,7 +1151,7 @@ spec:
 ### FluxCD
 
 ```yaml
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: quyendv
@@ -1107,7 +1159,7 @@ spec:
   interval: 10m
   url: https://quyendv.github.io/helm-charts
 ---
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
+apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: my-app
@@ -1115,7 +1167,7 @@ spec:
   chart:
     spec:
       chart: generic-app
-      version: 1.8.0
+      version: 2.0.0
       sourceRef:
         kind: HelmRepository
         name: quyendv
