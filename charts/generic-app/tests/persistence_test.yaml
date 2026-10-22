@@ -1,0 +1,37 @@
+suite: persistence outside StatefulSets
+templates:
+  - templates/pvc.yaml
+  - templates/daemonset.yaml
+  - templates/deployment.yaml
+set:
+  image: {repository: nginx, tag: "1"}
+  persistence.enabled: true
+tests:
+  - it: creates the claim a DaemonSet mounts
+    set:
+      kind: DaemonSet
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/pvc.yaml
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: RELEASE-NAME-generic-app
+        template: templates/daemonset.yaml
+  - it: keeps the claim on uninstall by default
+    template: templates/pvc.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+  - it: mounts an existing claim instead of creating one
+    set:
+      persistence.existingClaim: shared-data
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: templates/pvc.yaml
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: shared-data
+        template: templates/deployment.yaml
