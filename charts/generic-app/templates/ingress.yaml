@@ -1,49 +1,60 @@
 {{- if .Values.ingress.enabled }}
-apiVersion: {{ include "generic-app.ingress.apiVersion" . }}
+{{- if not .Values.service.enabled }}
+{{- fail "service.enabled must be true when ingress.enabled is true (the Ingress routes to the chart Service)" }}
+{{- end }}
+{{- if and .Values.ingress.tls (not .Values.ingress.hostname) }}
+{{- fail "ingress.tls requires ingress.hostname (the TLS secret and hosts are derived from it)" }}
+{{- end }}
+{{- if not (or .Values.ingress.hostname .Values.ingress.extraHosts .Values.ingress.extraRules) }}
+{{- fail "ingress.enabled is true but the Ingress has no rules: set ingress.hostname, ingress.extraHosts or ingress.extraRules" }}
+{{- end }}
+{{- $portName := "" }}
+{{- if or .Values.ingress.hostname .Values.ingress.extraHosts }}
+{{- $portName = include "generic-app.service.portName" (dict "port" .Values.ingress.servicePort "field" "ingress.servicePort" "context" $) }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- if or .Values.ingress.annotations .Values.commonAnnotations }}
-  annotations:
-    {{- if .Values.ingress.annotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.ingress.annotations "context" $) | nindent 4 }}
-    {{- end }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
+  {{- with include "generic-app.annotations" (dict "annotations" .Values.ingress.annotations "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if and .Values.ingress.ingressClassName (eq (include "generic-app.ingress.apiVersion" .) "networking.k8s.io/v1") }}
-  ingressClassName: {{ .Values.ingress.ingressClassName | quote }}
+  {{- with .Values.ingress.ingressClassName }}
+  ingressClassName: {{ . | quote }}
   {{- end }}
   rules:
     {{- if .Values.ingress.hostname }}
-    - host: {{ .Values.ingress.hostname }}
+    - host: {{ .Values.ingress.hostname | quote }}
       http:
         paths:
-          {{- if .Values.ingress.extraPaths }}
-          {{- toYaml .Values.ingress.extraPaths | nindent 10 }}
+          {{- with .Values.ingress.extraPaths }}
+          {{- include "generic-app.tplvalues.render" (dict "value" . "context" $) | nindent 10 }}
           {{- end }}
           - path: {{ .Values.ingress.path }}
-            {{- if eq (include "generic-app.ingress.apiVersion" .) "networking.k8s.io/v1" }}
             pathType: {{ .Values.ingress.pathType }}
-            {{- end }}
-            backend: {{- include "generic-app.ingress.backend" (dict "serviceName" (include "generic-app.fullname" .) "servicePort" (index .Values.service.ports "http") "context" $)  | nindent 14 }}
+            backend:
+              service:
+                name: {{ include "generic-app.fullname" . }}
+                port:
+                  name: {{ $portName }}
     {{- end }}
     {{- range .Values.ingress.extraHosts }}
     - host: {{ .name | quote }}
       http:
         paths:
           - path: {{ default "/" .path }}
-            {{- if eq (include "generic-app.ingress.apiVersion" $) "networking.k8s.io/v1" }}
-            pathType: {{ default "ImplementationSpecific" .pathType }}
-            {{- end }}
-            backend: {{- include "generic-app.ingress.backend" (dict "serviceName" (include "generic-app.fullname" $) "servicePort" (index $.Values.service.ports "http") "context" $) | nindent 14 }}
+            pathType: {{ default $.Values.ingress.pathType .pathType }}
+            backend:
+              service:
+                name: {{ include "generic-app.fullname" $ }}
+                port:
+                  name: {{ $portName }}
     {{- end }}
-    {{- if .Values.ingress.extraRules }}
-    {{- include "generic-app.tplvalues.render" (dict "value" .Values.ingress.extraRules "context" $) | nindent 4 }}
+    {{- with .Values.ingress.extraRules }}
+    {{- include "generic-app.tplvalues.render" (dict "value" . "context" $) | nindent 4 }}
     {{- end }}
   {{- if or .Values.ingress.tls .Values.ingress.extraTls }}
   tls:
@@ -52,25 +63,8 @@ spec:
         - {{ .Values.ingress.hostname | quote }}
       secretName: {{ printf "%s-tls" .Values.ingress.hostname }}
     {{- end }}
-    {{- if .Values.ingress.extraTls }}
-    {{- include "generic-app.tplvalues.render" (dict "value" .Values.ingress.extraTls "context" $) | nindent 4 }}
+    {{- with .Values.ingress.extraTls }}
+    {{- include "generic-app.tplvalues.render" (dict "value" . "context" $) | nindent 4 }}
     {{- end }}
   {{- end }}
 {{- end }}
-
-{{/*
-Helper to define ingress backend
-*/}}
-{{- define "generic-app.ingress.backend" -}}
-{{- $apiVersion := (include "generic-app.ingress.apiVersion" .context) -}}
-{{- if or (eq $apiVersion "extensions/v1beta1") (eq $apiVersion "networking.k8s.io/v1beta1") -}}
-serviceName: {{ .serviceName }}
-servicePort: {{ .servicePort }}
-{{- else -}}
-service:
-  name: {{ .serviceName }}
-  port:
-    number: {{ .servicePort }}
-{{- end -}}
-{{- end -}}
-

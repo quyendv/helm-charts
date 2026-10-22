@@ -1,0 +1,4 @@
+# Smallest useful install: an image and nothing else.
+image:
+  repository: nginx
+  tag: "1.27.3"

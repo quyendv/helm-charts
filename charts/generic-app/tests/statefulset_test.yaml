@@ -1,0 +1,46 @@
+suite: StatefulSet
+templates:
+  - templates/statefulset.yaml
+  - templates/service-headless.yaml
+  - templates/servicemonitor.yaml
+  - templates/service.yaml
+set:
+  image: {repository: postgres, tag: "16"}
+  kind: StatefulSet
+tests:
+  - it: keeps the chart version out of volumeClaimTemplates (immutable field)
+    set:
+      persistence.enabled: true
+    template: templates/statefulset.yaml
+    asserts:
+      - equal:
+          path: spec.volumeClaimTemplates[0].metadata.labels
+          value:
+            app.kubernetes.io/name: generic-app
+            app.kubernetes.io/instance: RELEASE-NAME
+  - it: creates the headless Service even without the main Service
+    template: templates/service-headless.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.clusterIP
+          value: None
+      - equal:
+          path: metadata.labels["generic-app/headless"]
+          value: "true"
+  - it: points serviceName at the headless Service
+    template: templates/statefulset.yaml
+    asserts:
+      - equal:
+          path: spec.serviceName
+          value: RELEASE-NAME-generic-app-headless
+  - it: excludes the headless Service from the ServiceMonitor
+    set:
+      service: {enabled: true, ports: {metrics: 9187}}
+      serviceMonitor.enabled: true
+    template: templates/servicemonitor.yaml
+    asserts:
+      - contains:
+          path: spec.selector.matchExpressions
+          content: {key: generic-app/headless, operator: DoesNotExist}

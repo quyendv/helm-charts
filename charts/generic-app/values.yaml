@@ -49,22 +49,25 @@ replicaCount: 1
 kind: Deployment
 
 ## Application image configuration
-## ref: https://hub.docker.com/
-## @param image.registry Application image registry
-## @param image.repository Application image repository
-## @param image.tag Application image tag (immutable tags are recommended)
+## The chart ships no default image: image.repository and one of image.tag /
+## image.digest are required. The reference renders as [registry/]repository[:tag][@digest].
+## @param image.registry Application image registry (empty uses the runtime default, normally docker.io)
+## @param image.repository [string] Application image repository (REQUIRED)
+## @param image.tag [string] Application image tag (immutable tags are recommended)
+## @param image.digest Application image digest, e.g. sha256:abc... (pins the image; may be combined with tag)
 ## @param image.pullPolicy Application image pull policy
 ## @param image.pullSecrets Application image pull secrets
 ##
 image:
-  registry: docker.io
-  repository: nginx
-  tag: "1.25.3"
+  registry: ""
+  repository: ""
+  tag: ""
+  digest: ""
   ## Specify a imagePullPolicy
-  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+  ## Empty lets Kubernetes default it: 'Always' for ':latest' or an untagged image, else 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
   ##
-  pullPolicy: IfNotPresent
+  pullPolicy: ""
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -81,12 +84,12 @@ command: []
 ##
 args: []
 ## @param containerPorts Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty and service.enabled is true
-## Lets you expose container ports that are not published via the Service (e.g. metrics, admin).
+## Lets the container listen on a different port than the Service publishes (Service 80 ->
+## container 8080) and expose ports that are not published at all (e.g. admin).
 ## When left empty it mirrors service.ports, but only while service.enabled is true — a
 ## service-less workload (worker, consumer, cron) gets no container ports at all.
 ## NOTE: the Service targets ports by NAME, so every service.ports key must also exist here
-## once you set this map. Helm merges maps, so remove an unwanted default with `null`
-## (e.g. `service.ports.http: null`) rather than an empty map.
+## (or in a sidecar) once you set this map.
 ## e.g:
 ## containerPorts:
 ##   http: 8080
@@ -193,21 +196,27 @@ podSecurityContext:
 ## Service configuration
 ##
 service:
-  ## @param service.enabled Enable service creation
+  ## @param service.enabled Enable service creation (requires at least one port in service.ports or service.extraPorts)
   ##
-  enabled: true
+  enabled: false
   ## @param service.type Service type
   ##
   type: ClusterIP
-  ## @param service.ports [object] Service ports
+  ## @param service.ports Service ports map (name -> port). Each name is also the targetPort, so it must match a container port name
+  ## Nothing is exposed by default. Ingress and Gateway API route to ingress.servicePort /
+  ## gatewayApi.httpRoute.servicePort when set, else to the "http" entry, else to the only entry.
+  ## e.g:
+  ## ports:
+  ##   http: 80        # with containerPorts.http: 8080, clients use :80 and the pod listens on :8080
+  ##   metrics: 9090
   ##
-  ports:
-    http: 80
-  ## @param service.nodePorts [object] Node ports to expose
-  ## NOTE: choose port between <30000-32767>
+  ports: {}
+  ## @param service.nodePorts Node ports by service.ports name, for NodePort/LoadBalancer services (30000-32767)
+  ## e.g:
+  ## nodePorts:
+  ##   http: 30080
   ##
-  nodePorts:
-    http: ""
+  nodePorts: {}
   ## @param service.clusterIP Service Cluster IP
   ## e.g.:
   ## clusterIP: None
@@ -344,15 +353,15 @@ ingress:
   ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
   ##
   ingressClassName: ""
-  ## @param ingress.pathType Ingress path type
+  ## @param ingress.pathType Ingress path type (Prefix behaves the same on every controller; ImplementationSpecific does not)
   ##
-  pathType: ImplementationSpecific
-  ## @param ingress.apiVersion Force Ingress API version (automatically detected if not set)
+  pathType: Prefix
+  ## @param ingress.hostname Default host for the ingress record (required unless extraHosts or extraRules are set)
   ##
-  apiVersion: ""
-  ## @param ingress.hostname Default host for the ingress record
+  hostname: ""
+  ## @param ingress.servicePort Name of the service.ports entry to route to (empty: "http", or the only port)
   ##
-  hostname: app.local
+  servicePort: ""
   ## @param ingress.path Default path for the ingress record
   ## NOTE: You may need to set this to '/*' in order to use this with ALB ingress controllers
   ##
@@ -383,10 +392,13 @@ ingress:
   ## @param ingress.extraPaths An array with additional arbitrary paths that may need to be added to the ingress under the main host
   ## e.g:
   ## extraPaths:
-  ## - path: /*
-  ##   backend:
-  ##     serviceName: ssl-redirect
-  ##     servicePort: use-annotation
+  ##   - path: /*
+  ##     pathType: ImplementationSpecific
+  ##     backend:
+  ##       service:
+  ##         name: ssl-redirect
+  ##         port:
+  ##           name: use-annotation
   ##
   extraPaths: []
   ## @param ingress.extraTls TLS configuration for additional hostname(s) to be covered with this ingress record
@@ -402,14 +414,16 @@ ingress:
   ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
   ## e.g:
   ## extraRules:
-  ## - host: example.local
+  ##   - host: example.local
   ##     http:
-  ##       path: /
-  ##       backend:
-  ##         service:
-  ##           name: example-svc
-  ##           port:
-  ##             name: http
+  ##       paths:
+  ##         - path: /
+  ##           pathType: Prefix
+  ##           backend:
+  ##             service:
+  ##               name: example-svc
+  ##               port:
+  ##                 name: http
   ##
   extraRules: []
 
@@ -460,6 +474,8 @@ gatewayApi:
     path:
       type: PathPrefix
       value: /
+    ## @param gatewayApi.httpRoute.servicePort Name of the service.ports entry the default rule routes to (empty: "http", or the only port). Ignored when rules is set
+    servicePort: ""
     ## @param gatewayApi.httpRoute.timeouts [object] Timeouts injected into the generated default rule (only when rules is empty). Ignored when rules is set — put timeouts per-rule there instead
     ## Gateway API HTTPRoute rule timeouts. request = total client-facing timeout;
     ## backendRequest = per-try timeout to the backend (must be <= request).
@@ -598,12 +614,16 @@ gatewayApi:
 
 ## Resource requests and limits
 ## ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-## @param resources.limits The resources limits for the containers
-## @param resources.requests The requested resources for the containers
+## @param resources Container resource requests and limits (empty: none set)
+## e.g:
+## resources:
+##   requests:
+##     cpu: 100m
+##     memory: 128Mi
+##   limits:
+##     memory: 256Mi
 ##
-resources:
-  limits: {}
-  requests: {}
+resources: {}
 
 ## Configure Pods' liveness, readiness and startup probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
@@ -894,9 +914,11 @@ serviceAccount:
   ## @param serviceAccount.annotations Additional Service Account annotations (evaluated as a template)
   ##
   annotations: {}
-  ## @param serviceAccount.automountServiceAccountToken Automount service account token for the server service account
+  ## @param serviceAccount.automountServiceAccountToken Mount an API token into the pod (set on both the ServiceAccount and the pod spec)
+  ## Off by default: most applications never call the Kubernetes API, and a mounted token is
+  ## a credential an attacker can use. Turn it on together with rbac.create.
   ##
-  automountServiceAccountToken: true
+  automountServiceAccountToken: false
 
 ## RBAC configuration
 ##
@@ -950,7 +972,7 @@ podDisruptionBudget:
   ## @param podDisruptionBudget.minAvailable Min number of pods that must still be available after the eviction
   ##
   minAvailable: 1
-  ## @param podDisruptionBudget.maxUnavailable Max number of pods that can be unavailable after the eviction
+  ## @param podDisruptionBudget.maxUnavailable Max number of pods that can be unavailable after the eviction (takes precedence over minAvailable when set)
   ##
   maxUnavailable: ""
 
@@ -1133,7 +1155,7 @@ topologySpreadConstraints: []
 ##
 schedulerName: ""
 
-## @param terminationGracePeriodSeconds Seconds pod needs to terminate gracefully
+## @param terminationGracePeriodSeconds Seconds pod needs to terminate gracefully (empty uses the Kubernetes default of 30; 0 is honoured)
 ## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods
 ##
 terminationGracePeriodSeconds: ""
@@ -1249,3 +1271,15 @@ hostAliases: []
 ##           storage: 8Gi
 ##
 extraDeploy: []
+
+## @section Custom values
+
+## @param extraValues Free-form values for your own templates (extraDeploy, tpl-enabled fields)
+## The values schema rejects unknown top-level keys so that typos fail loudly; put any
+## value you reference from your own templates here instead, e.g. {{ .Values.extraValues.database.host }}.
+## e.g:
+## extraValues:
+##   database:
+##     host: postgres.db.svc
+##
+extraValues: {}

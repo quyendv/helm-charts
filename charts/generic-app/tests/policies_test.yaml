@@ -1,0 +1,95 @@
+suite: policies, secrets and metadata
+templates:
+  - templates/pdb.yaml
+  - templates/secret.yaml
+  - templates/service.yaml
+  - templates/deployment.yaml
+  - templates/rolebinding.yaml
+  - templates/serviceaccount.yaml
+set:
+  image: {repository: nginx, tag: "1"}
+tests:
+  - it: lets maxUnavailable replace the minAvailable default
+    set:
+      podDisruptionBudget: {enabled: true, maxUnavailable: 0}
+    template: templates/pdb.yaml
+    asserts:
+      - equal:
+          path: spec.maxUnavailable
+          value: 0
+      - notExists:
+          path: spec.minAvailable
+  - it: encodes non-string secret values
+    set:
+      secrets: {enabled: true, data: {PORT: 5432, DEBUG: true, ACCOUNT_ID: 123456789012}}
+    template: templates/secret.yaml
+    asserts:
+      - equal:
+          path: data.ACCOUNT_ID
+          value: MTIzNDU2Nzg5MDEy
+      - equal:
+          path: data.PORT
+          value: NTQzMg==
+      - equal:
+          path: data.DEBUG
+          value: dHJ1ZQ==
+  - it: refuses to manage one Secret from both secrets and externalSecret
+    set:
+      secrets.enabled: true
+      externalSecret.enabled: true
+    template: templates/secret.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "would both manage the Secret"
+  - it: merges resource annotations over commonAnnotations without duplicates
+    set:
+      commonAnnotations: {owner: platform, tier: "{{ .Release.Name }}"}
+      service: {enabled: true, ports: {http: 80}, annotations: {owner: team-a}}
+    template: templates/service.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value: {owner: team-a, tier: RELEASE-NAME}
+  - it: adds commonLabels to pods but keeps the selector labels authoritative
+    set:
+      commonLabels: {team: platform, app.kubernetes.io/name: hijack}
+      podLabels: {tier: web}
+    template: templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels
+          value:
+            app.kubernetes.io/name: generic-app
+            app.kubernetes.io/instance: RELEASE-NAME
+            team: platform
+            tier: web
+  - it: renders a clean pod spec by default
+    template: templates/deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations
+      - notExists:
+          path: spec.template.spec.affinity
+      - notExists:
+          path: spec.template.spec.volumes
+      - notExists:
+          path: spec.template.spec.containers[0].env
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+  - it: honours terminationGracePeriodSeconds of 0
+    set:
+      terminationGracePeriodSeconds: 0
+    template: templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 0
+  - it: refuses to bind a Role to the default ServiceAccount
+    set:
+      rbac.create: true
+      serviceAccount.create: false
+    template: templates/rolebinding.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: 'bind the Role to the namespace.s "default" ServiceAccount'

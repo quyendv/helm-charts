@@ -1,177 +1,42 @@
 {{- if eq .Values.kind "StatefulSet" }}
-apiVersion: {{ include "generic-app.workload.apiVersion" . }}
+{{- $dataClaimTemplate := and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- with .Values.commonAnnotations }}
-  annotations: {{- toYaml . | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
-  serviceName: {{ include "generic-app.fullname" . }}-headless
-  {{- if .Values.updateStrategy }}
-  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  serviceName: {{ include "generic-app.headlessServiceName" . }}
+  {{- with .Values.updateStrategy }}
+  updateStrategy: {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) .Values.persistence.persistentVolumeClaimRetentionPolicy }}
+  minReadySeconds: {{ .Values.minReadySeconds }}
+  {{- if and (or $dataClaimTemplate .Values.persistence.extraVolumeClaimTemplates) .Values.persistence.persistentVolumeClaimRetentionPolicy }}
   persistentVolumeClaimRetentionPolicy: {{- toYaml .Values.persistence.persistentVolumeClaimRetentionPolicy | nindent 4 }}
   {{- end }}
   selector:
     matchLabels: {{- include "generic-app.selectorLabels" . | nindent 6 }}
-  template:
-    metadata:
-      annotations:
-        {{- include "generic-app.podAnnotations" . | nindent 8 }}
-      labels:
-        {{- include "generic-app.selectorLabels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-    spec:
-      {{- include "generic-app.imagePullSecrets" . | nindent 6 }}
-      serviceAccountName: {{ include "generic-app.serviceAccountName" . }}
-      {{- if .Values.podSecurityContext.enabled }}
-      securityContext: {{- omit .Values.podSecurityContext "enabled" | toYaml | nindent 8 }}
-      {{- end }}
-      {{- if .Values.hostAliases }}
-      hostAliases: {{- toYaml .Values.hostAliases | nindent 8 }}
-      {{- end }}
-      {{- if .Values.affinity }}
-      affinity: {{- toYaml .Values.affinity | nindent 8 }}
-      {{- else }}
-      affinity:
-        podAffinity: {{- include "generic-app.affinities.podAffinity" . | nindent 10 }}
-        podAntiAffinity: {{- include "generic-app.affinities.podAntiAffinity" . | nindent 10 }}
-        nodeAffinity: {{- include "generic-app.affinities.nodes" . | nindent 10 }}
-      {{- end }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- if .Values.topologySpreadConstraints }}
-      topologySpreadConstraints: {{- toYaml .Values.topologySpreadConstraints | nindent 8 }}
-      {{- end }}
-      {{- if .Values.priorityClassName }}
-      priorityClassName: {{ .Values.priorityClassName | quote }}
-      {{- end }}
-      {{- if .Values.schedulerName }}
-      schedulerName: {{ .Values.schedulerName | quote }}
-      {{- end }}
-      {{- if .Values.runtimeClassName }}
-      runtimeClassName: {{ .Values.runtimeClassName | quote }}
-      {{- end }}
-      {{- if .Values.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
-      {{- end }}
-      {{- if .Values.initContainers }}
-      initContainers: {{- include "generic-app.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
-      {{- end }}
-      containers:
-        - name: {{ .Chart.Name }}
-          image: {{ include "generic-app.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if .Values.containerSecurityContext.enabled }}
-          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- if .Values.command }}
-          command: {{- include "generic-app.tplvalues.render" (dict "value" .Values.command "context" $) | nindent 12 }}
-          {{- end }}
-          {{- if .Values.args }}
-          args: {{- include "generic-app.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
-          {{- end }}
-          env:
-            {{- if .Values.extraEnvVars }}
-            {{- include "generic-app.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
-            {{- end }}
-          {{- if or .Values.extraEnvVarsConfigMaps .Values.extraEnvVarsSecrets }}
-          envFrom:
-            {{- range .Values.extraEnvVarsConfigMaps }}
-            - configMapRef:
-                name: {{ include "generic-app.tplvalues.render" (dict "value" . "context" $) }}
-            {{- end }}
-            {{- range .Values.extraEnvVarsSecrets }}
-            - secretRef:
-                name: {{ include "generic-app.tplvalues.render" (dict "value" . "context" $) }}
-            {{- end }}
-          {{- end }}
-          {{- $ports := .Values.containerPorts | default (ternary .Values.service.ports dict .Values.service.enabled) }}
-          {{- if $ports }}
-          ports:
-            {{- range $name, $port := $ports }}
-            - name: {{ $name }}
-              containerPort: {{ $port }}
-              protocol: TCP
-            {{- end }}
-          {{- end }}
-          {{- if .Values.livenessProbe.enabled }}
-          {{- if .Values.customLivenessProbe }}
-          livenessProbe: {{- include "generic-app.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
-          {{- else }}
-          livenessProbe: {{- omit .Values.livenessProbe "enabled" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- else if .Values.customLivenessProbe }}
-          livenessProbe: {{- include "generic-app.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
-          {{- end }}
-          {{- if .Values.readinessProbe.enabled }}
-          {{- if .Values.customReadinessProbe }}
-          readinessProbe: {{- include "generic-app.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
-          {{- else }}
-          readinessProbe: {{- omit .Values.readinessProbe "enabled" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- else if .Values.customReadinessProbe }}
-          readinessProbe: {{- include "generic-app.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
-          {{- end }}
-          {{- if .Values.startupProbe.enabled }}
-          {{- if .Values.customStartupProbe }}
-          startupProbe: {{- include "generic-app.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
-          {{- else }}
-          startupProbe: {{- omit .Values.startupProbe "enabled" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- else if .Values.customStartupProbe }}
-          startupProbe: {{- include "generic-app.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
-          {{- end }}
-          {{- if .Values.lifecycleHooks }}
-          lifecycle: {{- include "generic-app.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
-          {{- end }}
-          {{- if .Values.resources }}
-          resources: {{- toYaml .Values.resources | nindent 12 }}
-          {{- end }}
-          volumeMounts:
-            {{- if .Values.persistence.enabled }}
-            - name: data
-              mountPath: {{ .Values.persistence.mountPath }}
-              {{- if .Values.persistence.subPath }}
-              subPath: {{ .Values.persistence.subPath }}
-              {{- end }}
-            {{- end }}
-            {{- if .Values.extraVolumeMounts }}
-            {{- include "generic-app.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
-            {{- end }}
-        {{- if .Values.sidecars }}
-        {{- include "generic-app.tplvalues.render" ( dict "value" .Values.sidecars "context" $) | nindent 8 }}
-        {{- end }}
-      volumes:
-        {{- if .Values.persistence.existingClaim }}
-        - name: data
-          persistentVolumeClaim:
-            claimName: {{ .Values.persistence.existingClaim }}
-        {{- end }}
-        {{- if .Values.extraVolumes }}
-        {{- include "generic-app.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
-        {{- end }}
-  {{- if or (and .Values.persistence.enabled (not .Values.persistence.existingClaim)) .Values.persistence.extraVolumeClaimTemplates }}
+  template: {{- include "generic-app.podTemplate" . | nindent 4 }}
+  {{- if or $dataClaimTemplate .Values.persistence.extraVolumeClaimTemplates }}
   volumeClaimTemplates:
-    {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+    {{- if $dataClaimTemplate }}
     - metadata:
         name: data
-        labels: {{- include "generic-app.labels" . | nindent 10 }}
-        {{- if .Values.persistence.annotations }}
-        annotations: {{- toYaml .Values.persistence.annotations | nindent 10 }}
+        {{- /*
+        volumeClaimTemplates cannot be changed after creation, so this carries only
+        the selector labels: the full label set includes the chart version, which
+        made every chart upgrade fail on a StatefulSet with persistence.
+        */}}
+        labels: {{- include "generic-app.selectorLabels" . | nindent 10 }}
+        {{- with .Values.persistence.annotations }}
+        annotations: {{- toYaml . | nindent 10 }}
         {{- end }}
       spec:
         accessModes:
@@ -181,17 +46,18 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.size | quote }}
-        {{ include "generic-app.storageClass" . }}
-        {{- if .Values.persistence.selector }}
-        selector: {{- toYaml .Values.persistence.selector | nindent 10 }}
-        {{- end -}}
-        {{- if .Values.persistence.dataSource }}
-        dataSource: {{- toYaml .Values.persistence.dataSource | nindent 10 }}
+        {{- with include "generic-app.storageClass" . }}
+        {{ . }}
+        {{- end }}
+        {{- with .Values.persistence.selector }}
+        selector: {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.persistence.dataSource }}
+        dataSource: {{- toYaml . | nindent 10 }}
         {{- end }}
     {{- end }}
-    {{- if .Values.persistence.extraVolumeClaimTemplates }}
-    {{- include "generic-app.tplvalues.render" (dict "value" .Values.persistence.extraVolumeClaimTemplates "context" $) | nindent 4 }}
+    {{- with .Values.persistence.extraVolumeClaimTemplates }}
+    {{- include "generic-app.tplvalues.render" (dict "value" . "context" $) | nindent 4 }}
     {{- end }}
   {{- end }}
 {{- end }}
-

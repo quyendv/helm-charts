@@ -1,0 +1,136 @@
+# Deployment exercising most pod, Service, Ingress and policy options at once.
+commonLabels:
+  team: platform
+commonAnnotations:
+  owner: platform-team
+image:
+  registry: ghcr.io
+  repository: example/api
+  tag: "2.3.4"
+  pullSecrets:
+    - regcred
+replicaCount: 2
+command: ["/app/server"]
+args: ["--port=8080"]
+containerPorts:
+  http: 8080
+  metrics: 9090
+service:
+  enabled: true
+  type: ClusterIP
+  ports:
+    http: 80
+    metrics: 9090
+  annotations:
+    example.com/scrape: "true"
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hostname: api.example.com
+  tls: true
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  extraHosts:
+    - name: api.example.org
+      path: /
+extraEnvVars:
+  - name: RELEASE
+    value: "{{ .Release.Name }}"
+extraEnvVarsConfigMaps:
+  - '{{ include "generic-app.fullname" . }}'
+extraEnvVarsSecrets:
+  - '{{ include "generic-app.fullname" . }}'
+configMaps:
+  enabled: true
+  data:
+    LOG_LEVEL: info
+secrets:
+  enabled: true
+  data:
+    API_KEY: s3cr3t
+containerSecurityContext:
+  enabled: true
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+livenessProbe:
+  enabled: true
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /ready
+    port: http
+customStartupProbe:
+  tcpSocket:
+    port: http
+lifecycleHooks:
+  preStop:
+    exec:
+      command: ["sleep", "5"]
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+persistence:
+  enabled: true
+  size: 1Gi
+  mountPath: /var/lib/app
+initContainers:
+  - name: init
+    image: busybox:1.36
+    command: ["sh", "-c", "true"]
+sidecars:
+  - name: proxy
+    image: envoyproxy/envoy:v1.31.0
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+networkPolicy:
+  enabled: true
+  allowExternal: false
+serviceMonitor:
+  enabled: true
+  interval: 30s
+serviceAccount:
+  automountServiceAccountToken: true
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps"]
+      verbs: ["get"]
+podAntiAffinityPreset: soft
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: generic-app
+podLabels:
+  tier: backend
+podAnnotations:
+  example.com/note: "{{ .Release.Name }}"
+hostAliases:
+  - ip: 10.0.0.1
+    hostnames: ["legacy.local"]
+priorityClassName: high
+terminationGracePeriodSeconds: 45
+minReadySeconds: 5

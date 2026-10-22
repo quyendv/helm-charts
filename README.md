@@ -25,7 +25,7 @@ helm install my-release quyendv/<chart-name>
 <!-- CHARTS_TABLE:START -->
 | Chart | Description | Version |
 | ----- | ----------- | ------- |
-| [generic-app](./charts/generic-app) | A generic Helm chart that can be used for various applications | 1.15.0 |
+| [generic-app](./charts/generic-app) | A generic Helm chart that can be used for various applications | 2.0.0 |
 <!-- CHARTS_TABLE:END -->
 
 ## Development
@@ -33,6 +33,9 @@ helm install my-release quyendv/<chart-name>
 ```bash
 # Lint all charts
 make lint
+
+# Lint + helm-unittest + kubeconform over every ci/ and examples/ values file (what CI runs)
+make test
 
 # Regenerate docs (chart parameter tables + the table above)
 make docs
@@ -54,21 +57,27 @@ Run `make help` to list available tasks.
 
 ## Contributing
 
-1. Branch off `develop`.
-2. Make your changes, update `values.yaml` annotations / `Chart.yaml` as needed.
-3. Run `make docs` and `make lint`, commit the result.
-4. Open a pull request against `develop`.
+`main` is the only long-lived branch.
+
+1. Branch off `main`.
+2. Make your changes, keeping `values.yaml` annotations and `values.schema.json` in step.
+3. If the chart's packaged files changed, bump `version` in `Chart.yaml` (SemVer) and add a matching `## [x.y.z]` section to the chart's `CHANGELOG.md`. CI enforces both; changes limited to `README.md`, `CHANGELOG.md`, `examples/`, `ci/` and `tests/` are exempt.
+4. Run `make docs` and `make test` (needs [helm-unittest](https://github.com/helm-unittest/helm-unittest) and [kubeconform](https://github.com/yannh/kubeconform)), and commit the result.
+5. Open a pull request against `main`. To batch several changes into one release, collect them on a branch such as `release/x.y.z` and open a single PR.
 
 ### Adding a new chart
 
 1. Create the chart under `charts/<chart-name>/`.
-2. Fill in `Chart.yaml` (name, version, description) and document `values.yaml` with `## @param` annotations.
-3. Run `make docs` — the chart is picked up automatically and added to the table above.
-4. Submit a PR to `develop`.
+2. Fill in `Chart.yaml` (name, version, description), document `values.yaml` with `## @param` annotations and start a `CHANGELOG.md`.
+3. Add render fixtures under `ci/` (they are linted and validated in CI) and, ideally, `tests/` for helm-unittest.
+4. Run `make docs` — the chart is picked up automatically and added to the table above.
+5. Submit a PR to `main`.
 
 ## Automated releases
 
-Pushing to `main` or `develop` (when `charts/**` changes) triggers [chart-releaser-action](https://github.com/helm/chart-releaser-action), which packages each chart, creates a GitHub release per chart version, updates the Helm repository `index.yaml`, and deploys `index.html` to GitHub Pages. Existing versions are skipped (`skip_existing`), so bump the chart `version` to publish a new release.
+Merging to `main` (when `charts/**` changes) triggers [chart-releaser-action](https://github.com/helm/chart-releaser-action). It packages each chart, creates a GitHub release and the `<chart>-<version>` tag for every new chart version, updates the Helm repository `index.yaml`, and deploys `index.html` to GitHub Pages. Existing versions are skipped (`skip_existing`), so the `version` in `Chart.yaml` is what triggers a release; do not create tags by hand.
+
+The release body is that version's section of the chart's `CHANGELOG.md` (see `scripts/release-notes.sh`), followed by install instructions and a link to the diff against the previous release. `scripts/backfill-release-notes.sh` applies the same format to existing releases.
 
 ## License
 

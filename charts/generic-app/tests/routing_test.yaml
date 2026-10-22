@@ -1,0 +1,126 @@
+suite: Ingress and HTTPRoute port resolution
+templates:
+  - templates/ingress.yaml
+  - templates/httproute.yaml
+  - templates/gatewayapi-http-redirect.yaml
+set:
+  image: {repository: nginx, tag: "1"}
+  ingress: {enabled: true, hostname: app.example.com}
+tests:
+  - it: routes to the "http" port by default
+    set:
+      service: {enabled: true, ports: {http: 80, metrics: 9090}}
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: http
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+  - it: routes to the only port when it is not named http
+    set:
+      service: {enabled: true, ports: {grpc: 9000}}
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: grpc
+  - it: fails when several ports leave the choice ambiguous
+    set:
+      service: {enabled: true, ports: {grpc: 9000, admin: 9001}}
+    template: templates/ingress.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "ingress.servicePort is required"
+  - it: rejects a servicePort that is not a Service port
+    set:
+      service: {enabled: true, ports: {http: 80}}
+      ingress.servicePort: web
+    template: templates/ingress.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: 'ingress.servicePort is "web"'
+  - it: fails without a Service
+    template: templates/ingress.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "service.enabled must be true when ingress.enabled is true"
+  - it: fails on TLS without a hostname
+    set:
+      service: {enabled: true, ports: {http: 80}}
+      ingress: {hostname: "", tls: true}
+    template: templates/ingress.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "ingress.tls requires ingress.hostname"
+  - it: resolves the HTTPRoute backend port number through servicePort
+    set:
+      ingress.enabled: false
+      service: {enabled: true, ports: {grpc: 9000, admin: 9001}}
+      gatewayApi: {enabled: true, httpRoute: {parentRefs: [{name: gw}], servicePort: admin}}
+    template: templates/httproute.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0]
+          value: {group: "", kind: Service, name: RELEASE-NAME-generic-app, port: 9001, weight: 1}
+  - it: redirects every route hostname, gatewayApi.hostname included
+    set:
+      ingress.enabled: false
+      service: {enabled: true, ports: {http: 80}}
+      gatewayApi:
+        enabled: true
+        hostname: app.example.com
+        httpRoute: {parentRefs: [{name: gw}], hostnames: [www.example.com]}
+        httpRedirect: {enabled: true, parentRefs: [{name: gw, sectionName: http}]}
+    template: templates/gatewayapi-http-redirect.yaml
+    asserts:
+      - equal:
+          path: spec.hostnames
+          value: [www.example.com, app.example.com]
+  - it: ignores Service ports set to null
+    set:
+      service: {enabled: true, ports: {http: null, grpc: 9000}}
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: grpc
+  - it: accepts a named extraPorts entry as servicePort
+    set:
+      service:
+        enabled: true
+        extraPorts: [{name: web, port: 80, targetPort: web}]
+      ingress.servicePort: web
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: web
+  - it: does not resolve a port when only extraRules are rendered
+    set:
+      service: {enabled: true, ports: {grpc: 9000, admin: 9001}}
+      ingress:
+        hostname: ""
+        extraRules:
+          - host: custom.example.com
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend: {service: {name: other, port: {number: 80}}}
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: custom.example.com
+  - it: resolves the HTTPRoute port number past null entries
+    set:
+      ingress.enabled: false
+      service: {enabled: true, ports: {http: null, grpc: 9000}}
+      gatewayApi: {enabled: true, httpRoute: {parentRefs: [{name: gw}]}}
+    template: templates/httproute.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 9000

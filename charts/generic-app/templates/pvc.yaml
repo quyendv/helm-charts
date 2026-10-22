@@ -1,21 +1,16 @@
-{{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) (eq .Values.kind "Deployment") }}
+{{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) (ne .Values.kind "StatefulSet") }}
+{{- $annotations := .Values.persistence.annotations | default dict | deepCopy }}
+{{- with .Values.persistence.resourcePolicy }}
+{{- $_ := set $annotations "helm.sh/resource-policy" . }}
+{{- end }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- if or .Values.persistence.resourcePolicy .Values.persistence.annotations .Values.commonAnnotations }}
-  annotations:
-    {{- if .Values.persistence.resourcePolicy }}
-    helm.sh/resource-policy: {{ .Values.persistence.resourcePolicy | quote }}
-    {{- end }}
-    {{- if .Values.persistence.annotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.persistence.annotations "context" $) | nindent 4 }}
-    {{- end }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
+  {{- with include "generic-app.annotations" (dict "annotations" $annotations "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   accessModes:
@@ -25,12 +20,13 @@ spec:
   resources:
     requests:
       storage: {{ .Values.persistence.size | quote }}
-  {{ include "generic-app.storageClass" . }}
-  {{- if .Values.persistence.selector }}
-  selector: {{- include "generic-app.tplvalues.render" (dict "value" .Values.persistence.selector "context" $) | nindent 4 }}
-  {{- end -}}
-  {{- if .Values.persistence.dataSource }}
-  dataSource: {{- include "generic-app.tplvalues.render" (dict "value" .Values.persistence.dataSource "context" $) | nindent 4 }}
+  {{- with include "generic-app.storageClass" . }}
+  {{ . }}
+  {{- end }}
+  {{- with .Values.persistence.selector }}
+  selector: {{- include "generic-app.tplvalues.render" (dict "value" . "context" $) | nindent 4 }}
+  {{- end }}
+  {{- with .Values.persistence.dataSource }}
+  dataSource: {{- include "generic-app.tplvalues.render" (dict "value" . "context" $) | nindent 4 }}
   {{- end }}
 {{- end }}
-

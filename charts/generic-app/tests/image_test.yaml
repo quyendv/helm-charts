@@ -1,0 +1,42 @@
+suite: image reference
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: fails without an image repository
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.repository is required"
+  - it: fails without a tag or digest
+    set:
+      image.repository: nginx
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag or image.digest is required"
+  - it: renders registry, tag and digest in order
+    set:
+      image: {registry: ghcr.io, repository: acme/api, tag: "1.2.3", digest: "sha256:abc"}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/acme/api:1.2.3@sha256:abc
+  - it: lets global.imageRegistry override the registry
+    set:
+      image: {registry: docker.io, repository: acme/api, tag: "1"}
+      global.imageRegistry: mirror.local
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: mirror.local/acme/api:1
+  - it: leaves imagePullPolicy to Kubernetes by default
+    set:
+      image: {repository: nginx, tag: "1"}
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].imagePullPolicy
+  - it: formats a whole-number tag from a values file exactly
+    values:
+      - ./values/numeric-tag.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: acme/api:20240101

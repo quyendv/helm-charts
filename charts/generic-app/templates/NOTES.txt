@@ -7,47 +7,58 @@ APP VERSION: {{ .Chart.AppVersion }}
 {{- if .Values.ingress.enabled }}
 
 Your application is available at:
-
-{{- if .Values.ingress.tls }}
-  https://{{ .Values.ingress.hostname }}{{ .Values.ingress.path }}
-{{- else }}
-  http://{{ .Values.ingress.hostname }}{{ .Values.ingress.path }}
+{{- $scheme := ternary "https" "http" (not (empty .Values.ingress.tls)) }}
+{{- if .Values.ingress.hostname }}
+  {{ $scheme }}://{{ .Values.ingress.hostname }}{{ .Values.ingress.path }}
+{{- end }}
+{{- range .Values.ingress.extraHosts }}
+  http://{{ .name }}{{ default "/" .path }}
 {{- end }}
 {{- else if .Values.gatewayApi.enabled }}
 
 Gateway API (HTTPRoute) is enabled:
-  kubectl get httproute -n {{ include "generic-app.namespace" . }} {{ default (include "generic-app.fullname" .) .Values.gatewayApi.httpRoute.name }}
+  kubectl get httproute -n {{ include "generic-app.namespace" . }} {{ include "generic-app.gatewayApi.httpRoute.resourceName" . }}
 
 Traffic depends on your Gateway status and listener configuration (not shown by this chart).
 {{- if .Values.gatewayApi.certificate.enabled }}
 cert-manager Certificate is enabled; ensure the Gateway listener references spec.secretName from the Certificate (or your platform TLS pattern).
 {{- end }}
-{{- else }}
+{{- else if and .Values.service.enabled (include "generic-app.servicePorts" .) }}
+{{- $ports := include "generic-app.servicePorts" . | fromYaml }}
+{{- /* Informational only, so never fail here: prefer "http", else the first port by name. */}}
+{{- $portName := ternary "http" (keys $ports | sortAlpha | first) (hasKey $ports "http") }}
+{{- $port := index $ports $portName }}
 
 Your application has been deployed successfully!
 
-To access your application:
+To access your application ("{{ $portName }}" port):
 
-{{- if contains "NodePort" .Values.service.type }}
+{{- if eq .Values.service.type "NodePort" }}
 
-  export NODE_PORT=$(kubectl get --namespace {{ include "generic-app.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "generic-app.fullname" . }})
-  export NODE_IP=$(kubectl get nodes --namespace {{ include "generic-app.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  export NODE_PORT=$(kubectl get --namespace {{ include "generic-app.namespace" . }} -o jsonpath='{.spec.ports[?(@.name=="{{ $portName }}")].nodePort}' services {{ include "generic-app.fullname" . }})
+  export NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[0].address}")
   echo "Application URL: http://$NODE_IP:$NODE_PORT"
 
-{{- else if contains "LoadBalancer" .Values.service.type }}
+{{- else if eq .Values.service.type "LoadBalancer" }}
 
   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
         Watch the status with: 'kubectl get --namespace {{ include "generic-app.namespace" . }} svc -w {{ include "generic-app.fullname" . }}'
 
   export SERVICE_IP=$(kubectl get svc --namespace {{ include "generic-app.namespace" . }} {{ include "generic-app.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
-  echo "Application URL: http://$SERVICE_IP:{{ index .Values.service.ports "http" }}"
+  echo "Application URL: http://$SERVICE_IP:{{ $port }}"
 
-{{- else if contains "ClusterIP" .Values.service.type }}
+{{- else }}
 
+  kubectl port-forward --namespace {{ include "generic-app.namespace" . }} svc/{{ include "generic-app.fullname" . }} 8080:{{ $port }}
   echo "Application URL: http://127.0.0.1:8080"
-  kubectl port-forward --namespace {{ include "generic-app.namespace" . }} svc/{{ include "generic-app.fullname" . }} 8080:{{ index .Values.service.ports "http" }}
 
 {{- end }}
+{{- else }}
+
+Your application has been deployed successfully!
+
+No Service was created (service.enabled=false), so nothing routes to the pods. Inspect them with:
+  kubectl get pods --namespace {{ include "generic-app.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }}
 {{- end }}
 
 {{- if .Values.autoscaling.enabled }}

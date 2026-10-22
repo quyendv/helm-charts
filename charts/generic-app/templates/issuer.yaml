@@ -7,8 +7,8 @@ metadata:
   namespace: {{ include "generic-app.namespace" . | quote }}
   {{- end }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   {{- if .Values.certManager.acme.enabled }}

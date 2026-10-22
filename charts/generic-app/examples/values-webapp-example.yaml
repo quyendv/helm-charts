@@ -7,11 +7,12 @@ kind: Deployment
 image:
   registry: docker.io
   repository: nginx
-  tag: "1.25.3"
+  tag: "1.27.3"
   pullPolicy: IfNotPresent
 
 # Service configuration
 service:
+  enabled: true
   type: ClusterIP
   ports:
     http: 80

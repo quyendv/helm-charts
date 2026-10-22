@@ -1,0 +1,64 @@
+suite: service and container ports
+templates:
+  - templates/deployment.yaml
+  - templates/service.yaml
+  - templates/networkpolicy.yaml
+set:
+  image: {repository: nginx, tag: "1"}
+tests:
+  - it: exposes nothing by default
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: templates/service.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].ports
+        template: templates/deployment.yaml
+  - it: fails when the Service is enabled without ports
+    set:
+      service.enabled: true
+    template: templates/service.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "service.ports is empty"
+  - it: mirrors service.ports into the container when containerPorts is empty
+    set:
+      service: {enabled: true, ports: {http: 8080}}
+    template: templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports
+          value: [{name: http, containerPort: 8080, protocol: TCP}]
+  - it: targets the container port by name when the numbers differ
+    set:
+      service: {enabled: true, ports: {http: 80}}
+      containerPorts: {http: 8080}
+    asserts:
+      - equal:
+          path: spec.ports[0]
+          value: {name: http, port: 80, targetPort: http, protocol: TCP}
+        template: templates/service.yaml
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 8080
+        template: templates/deployment.yaml
+  - it: allows the pod port, not the Service port, in the NetworkPolicy
+    set:
+      service: {enabled: true, ports: {http: 80}}
+      containerPorts: {http: 8080}
+      networkPolicy: {enabled: true, allowExternal: false}
+    template: templates/networkpolicy.yaml
+    asserts:
+      - equal:
+          path: spec.ingress[0].ports
+          value: [{protocol: TCP, port: 8080}]
+  - it: renders nodePorts only for the ports that set one
+    set:
+      service: {enabled: true, type: NodePort, ports: {http: 80, admin: 9000}, nodePorts: {http: 30080}}
+    template: templates/service.yaml
+    asserts:
+      - equal:
+          path: spec.ports
+          value:
+            - {name: admin, port: 9000, targetPort: admin, protocol: TCP}
+            - {name: http, port: 80, targetPort: http, protocol: TCP, nodePort: 30080}

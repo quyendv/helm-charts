@@ -5,12 +5,12 @@ metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- with .Values.commonAnnotations }}
-  annotations: {{- toYaml . | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   scaleTargetRef:
-    apiVersion: {{ include "generic-app.workload.apiVersion" . }}
+    apiVersion: apps/v1
     kind: {{ .Values.kind }}
     name: {{ include "generic-app.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}

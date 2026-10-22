@@ -5,16 +5,16 @@ metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- with .Values.commonAnnotations }}
-  annotations: {{- toYaml . | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.podDisruptionBudget.minAvailable }}
-  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
-  {{- end  }}
-  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  {{- /* The API accepts only one of the two; maxUnavailable wins so it can be set without clearing the minAvailable default. */}}
+  {{- if include "generic-app.isSet" .Values.podDisruptionBudget.maxUnavailable }}
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
-  {{- end  }}
+  {{- else if include "generic-app.isSet" .Values.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- end }}
   selector:
     matchLabels: {{- include "generic-app.selectorLabels" . | nindent 6 }}
 {{- end }}

@@ -1,0 +1,29 @@
+# Queue worker without a Service, shipping extra objects through extraDeploy.
+image:
+  repository: example/worker
+  tag: "1.0.0"
+service:
+  enabled: false
+extraDeploy:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: '{{ include "generic-app.fullname" . }}-extra'
+    data:
+      release: "{{ .Release.Name }}"
+  - |
+    apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      name: {{ include "generic-app.fullname" . }}-cleanup
+    spec:
+      schedule: "0 3 * * *"
+      jobTemplate:
+        spec:
+          template:
+            spec:
+              restartPolicy: OnFailure
+              containers:
+                - name: cleanup
+                  image: {{ include "generic-app.image" . }}
+                  args: ["cleanup"]
