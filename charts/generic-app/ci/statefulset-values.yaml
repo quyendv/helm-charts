@@ -1,0 +1,35 @@
+# StatefulSet with a default data claim, an extra claim and metrics scraping.
+kind: StatefulSet
+replicaCount: 3
+image:
+  repository: postgres
+  tag: "16.4"
+service:
+  enabled: true
+  ports:
+    postgres: 5432
+    metrics: 9187
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: fast
+  mountPath: /var/lib/postgresql/data
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  extraVolumeClaimTemplates:
+    - metadata:
+        name: wal
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+extraVolumeMounts:
+  - name: wal
+    mountPath: /wal
+updateStrategy:
+  type: RollingUpdate
+serviceMonitor:
+  enabled: true
+podAntiAffinityPreset: hard

@@ -1,0 +1,40 @@
+# Gateway API with every chart-managed extra: redirect, certificate and NGF presets.
+image:
+  repository: nginx
+  tag: "1.27.3"
+service:
+  enabled: true
+  ports:
+    http: 80
+gatewayApi:
+  enabled: true
+  hostname: app.example.com
+  httpRoute:
+    hostnames:
+      - www.example.com
+    parentRefs:
+      - name: public
+        namespace: gateway-system
+        sectionName: https
+    timeouts:
+      request: 60s
+  httpRedirect:
+    enabled: true
+    parentRefs:
+      - name: public
+        namespace: gateway-system
+        sectionName: http
+  certificate:
+    enabled: true
+    issuerRef:
+      name: letsencrypt
+  nginxGatewayFabric:
+    enabled: true
+    clientSettings:
+      bodyMaxSize: 50m
+    upstreamProxyTimeouts:
+      read: 600s
+    snippets:
+      extra:
+        - context: http.server.location
+          value: proxy_buffering off;
