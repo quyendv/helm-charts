@@ -2,6 +2,11 @@
 # This example demonstrates how to configure zero-downtime deployments
 # and controlled StatefulSet updates
 
+# The chart has no default image; the examples below all assume one.
+image:
+  repository: nginx
+  tag: "1.27.3"
+
 ## Example 1: Zero-Downtime Deployment
 ## This configuration ensures that at least one pod is always available during updates
 ## Suitable for web applications and APIs that need high availability
@@ -10,7 +15,7 @@
 # 
 # image:
 #   repository: nginx
-#   tag: '1.25.3'
+#   tag: '1.27.3'
 #   pullPolicy: IfNotPresent
 # 
 # updateStrategy:

@@ -108,6 +108,8 @@ networkPolicy:
 serviceMonitor:
   enabled: true
   interval: 30s
+serviceAccount:
+  automountServiceAccountToken: true
 rbac:
   create: true
   rules:

@@ -1,11 +1,7 @@
 {{- if and .Values.gatewayApi.enabled .Values.gatewayApi.certificate.enabled }}
 {{- $dns := .Values.gatewayApi.certificate.dnsNames | default list }}
 {{- if not $dns }}
-  {{- $hn := .Values.gatewayApi.httpRoute.hostnames | default list }}
-  {{- if .Values.gatewayApi.hostname }}
-  {{- $hn = concat $hn (list .Values.gatewayApi.hostname) }}
-  {{- end }}
-  {{- $dns = compact $hn | uniq }}
+{{- $dns = include "generic-app.gatewayApi.hostnames" . | fromJsonArray }}
 {{- end }}
 {{- if not $dns }}
 {{- fail "gatewayApi.certificate.enabled requires gatewayApi.certificate.dnsNames or HTTPRoute hostnames (gatewayApi.hostname / gatewayApi.httpRoute.hostnames)" }}
@@ -21,14 +17,8 @@ metadata:
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels:
     {{- include "generic-app.labels" . | nindent 4 }}
-  {{- if or .Values.gatewayApi.certificate.annotations .Values.commonAnnotations }}
-  annotations:
-    {{- if .Values.gatewayApi.certificate.annotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.gatewayApi.certificate.annotations "context" $) | nindent 4 }}
-    {{- end }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
+  {{- with include "generic-app.annotations" (dict "annotations" .Values.gatewayApi.certificate.annotations "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   secretName: {{ include "generic-app.gatewayApi.certificate.secretName" (dict "root" $ "dnsNames" $dns) }}

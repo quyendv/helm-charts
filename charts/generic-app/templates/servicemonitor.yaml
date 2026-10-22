@@ -1,21 +1,23 @@
 {{- if .Values.serviceMonitor.enabled }}
+{{- if not .Values.service.enabled }}
+{{- fail "service.enabled must be true when serviceMonitor.enabled is true (the ServiceMonitor scrapes through the chart Service)" }}
+{{- end }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
-  labels:
-    {{- include "generic-app.labels" . | nindent 4 }}
-    {{- with .Values.serviceMonitor.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- with .Values.serviceMonitor.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
+  labels: {{- include "generic-app.labels" . | fromYaml | merge (.Values.serviceMonitor.labels | default dict | deepCopy) | toYaml | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "annotations" .Values.serviceMonitor.annotations "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   selector:
     matchLabels: {{- include "generic-app.selectorLabels" . | nindent 6 }}
+    {{- /* Skip the StatefulSet headless Service, which carries the same selector labels. */}}
+    matchExpressions:
+      - key: generic-app/headless
+        operator: DoesNotExist
   namespaceSelector:
     matchNames:
       - {{ include "generic-app.namespace" . | quote }}

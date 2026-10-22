@@ -6,6 +6,9 @@
 # Let Kubernetes scheduler decide where to place pods
 # ==============================================================================
 replicaCount: 3
+image:
+  repository: nginx
+  tag: "1.27.3"
 # podAffinityPreset: ""          # No pod affinity (default)
 # podAntiAffinityPreset: ""      # No pod anti-affinity (default)
 

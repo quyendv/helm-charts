@@ -14,6 +14,7 @@ image:
 
 # Service configuration
 service:
+  enabled: true
   type: ClusterIP
   ports:
     postgres: 5432

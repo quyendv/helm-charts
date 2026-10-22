@@ -135,21 +135,22 @@ Data is kept by default in both runtimes, but the mechanism differs.
 
 ### Application parameters
 
-| Name                     | Description                                                                                                                            | Value          |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| `replicaCount`           | Number of replicas to deploy                                                                                                           | `1`            |
-| `kind`                   | Workload kind (Deployment, StatefulSet, or DaemonSet)                                                                                  | `Deployment`   |
-| `image.registry`         | Application image registry                                                                                                             | `docker.io`    |
-| `image.repository`       | Application image repository                                                                                                           | `nginx`        |
-| `image.tag`              | Application image tag (immutable tags are recommended)                                                                                 | `1.25.3`       |
-| `image.pullPolicy`       | Application image pull policy                                                                                                          | `IfNotPresent` |
-| `image.pullSecrets`      | Application image pull secrets                                                                                                         | `[]`           |
-| `command`                | Override default container command (useful when using custom images)                                                                   | `[]`           |
-| `args`                   | Override default container args (useful when using custom images)                                                                      | `[]`           |
-| `containerPorts`         | Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty and service.enabled is true | `{}`           |
-| `extraEnvVars`           | Array with extra environment variables to add                                                                                          | `[]`           |
-| `extraEnvVarsConfigMaps` | List of existing ConfigMaps to load as environment variables                                                                           | `[]`           |
-| `extraEnvVarsSecrets`    | List of existing Secrets to load as environment variables                                                                              | `[]`           |
+| Name                     | Description                                                                                                                            | Value        |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `replicaCount`           | Number of replicas to deploy                                                                                                           | `1`          |
+| `kind`                   | Workload kind (Deployment, StatefulSet, or DaemonSet)                                                                                  | `Deployment` |
+| `image.registry`         | Application image registry (empty uses the runtime default, normally docker.io)                                                        | `""`         |
+| `image.repository`       | Application image repository (REQUIRED)                                                                                                | `""`         |
+| `image.tag`              | Application image tag (immutable tags are recommended)                                                                                 | `""`         |
+| `image.digest`           | Application image digest, e.g. sha256:abc... (pins the image; may be combined with tag)                                                | `""`         |
+| `image.pullPolicy`       | Application image pull policy                                                                                                          | `""`         |
+| `image.pullSecrets`      | Application image pull secrets                                                                                                         | `[]`         |
+| `command`                | Override default container command (useful when using custom images)                                                                   | `[]`         |
+| `args`                   | Override default container args (useful when using custom images)                                                                      | `[]`         |
+| `containerPorts`         | Container ports map (name -> number), independent of service.ports; falls back to service.ports when empty and service.enabled is true | `{}`         |
+| `extraEnvVars`           | Array with extra environment variables to add                                                                                          | `[]`         |
+| `extraEnvVarsConfigMaps` | List of existing ConfigMaps to load as environment variables                                                                           | `[]`         |
+| `extraEnvVarsSecrets`    | List of existing Secrets to load as environment variables                                                                              | `[]`         |
 
 ### Security parameters
 
@@ -176,20 +177,20 @@ Data is kept by default in both runtimes, but the mechanism differs.
 
 ### Service parameters
 
-| Name                               | Description                                                                | Value       |
-| ---------------------------------- | -------------------------------------------------------------------------- | ----------- |
-| `service.enabled`                  | Enable service creation                                                    | `true`      |
-| `service.type`                     | Service type                                                               | `ClusterIP` |
-| `service.ports`                    | Service ports                                                              | `{}`        |
-| `service.nodePorts`                | Node ports to expose                                                       | `{}`        |
-| `service.clusterIP`                | Service Cluster IP                                                         | `""`        |
-| `service.loadBalancerIP`           | Service Load Balancer IP                                                   | `""`        |
-| `service.loadBalancerSourceRanges` | Service Load Balancer sources                                              | `[]`        |
-| `service.externalTrafficPolicy`    | Service external traffic policy                                            | `Cluster`   |
-| `service.annotations`              | Additional custom annotations for Service                                  | `{}`        |
-| `service.extraPorts`               | Extra ports to expose in Service (normally used with the `sidecars` value) | `[]`        |
-| `service.sessionAffinity`          | Session Affinity for Kubernetes service, can be "None" or "ClientIP"       | `None`      |
-| `service.sessionAffinityConfig`    | Additional settings for the sessionAffinity                                | `{}`        |
+| Name                               | Description                                                                                                | Value       |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------- |
+| `service.enabled`                  | Enable service creation (requires at least one entry in service.ports)                                     | `false`     |
+| `service.type`                     | Service type                                                                                               | `ClusterIP` |
+| `service.ports`                    | Service ports map (name -> port). Each name is also the targetPort, so it must match a container port name | `{}`        |
+| `service.nodePorts`                | Node ports by service.ports name, for NodePort/LoadBalancer services (30000-32767)                         | `{}`        |
+| `service.clusterIP`                | Service Cluster IP                                                                                         | `""`        |
+| `service.loadBalancerIP`           | Service Load Balancer IP                                                                                   | `""`        |
+| `service.loadBalancerSourceRanges` | Service Load Balancer sources                                                                              | `[]`        |
+| `service.externalTrafficPolicy`    | Service external traffic policy                                                                            | `Cluster`   |
+| `service.annotations`              | Additional custom annotations for Service                                                                  | `{}`        |
+| `service.extraPorts`               | Extra ports to expose in Service (normally used with the `sidecars` value)                                 | `[]`        |
+| `service.sessionAffinity`          | Session Affinity for Kubernetes service, can be "None" or "ClientIP"                                       | `None`      |
+| `service.sessionAffinityConfig`    | Additional settings for the sessionAffinity                                                                | `{}`        |
 
 ### Cert-Manager parameters
 
@@ -213,20 +214,20 @@ Data is kept by default in both runtimes, but the mechanism differs.
 
 ### Ingress parameters
 
-| Name                       | Description                                                                                                                      | Value                    |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| `ingress.enabled`          | Enable ingress record generation                                                                                                 | `false`                  |
-| `ingress.ingressClassName` | IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)                                                    | `""`                     |
-| `ingress.pathType`         | Ingress path type                                                                                                                | `ImplementationSpecific` |
-| `ingress.apiVersion`       | Force Ingress API version (automatically detected if not set)                                                                    | `""`                     |
-| `ingress.hostname`         | Default host for the ingress record                                                                                              | `app.local`              |
-| `ingress.path`             | Default path for the ingress record                                                                                              | `/`                      |
-| `ingress.annotations`      | Additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations. | `{}`                     |
-| `ingress.tls`              | Enable TLS configuration for the host defined at `ingress.hostname` parameter                                                    | `false`                  |
-| `ingress.extraHosts`       | An array with additional hostname(s) to be covered with the ingress record                                                       | `[]`                     |
-| `ingress.extraPaths`       | An array with additional arbitrary paths that may need to be added to the ingress under the main host                            | `[]`                     |
-| `ingress.extraTls`         | TLS configuration for additional hostname(s) to be covered with this ingress record                                              | `[]`                     |
-| `ingress.extraRules`       | Additional rules to be covered with this ingress record                                                                          | `[]`                     |
+| Name                       | Description                                                                                                                      | Value    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `ingress.enabled`          | Enable ingress record generation                                                                                                 | `false`  |
+| `ingress.ingressClassName` | IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)                                                    | `""`     |
+| `ingress.pathType`         | Ingress path type (Prefix behaves the same on every controller; ImplementationSpecific does not)                                 | `Prefix` |
+| `ingress.hostname`         | Default host for the ingress record (required unless extraHosts or extraRules are set)                                           | `""`     |
+| `ingress.servicePort`      | Name of the service.ports entry to route to (empty: "http", or the only port)                                                    | `""`     |
+| `ingress.path`             | Default path for the ingress record                                                                                              | `/`      |
+| `ingress.annotations`      | Additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations. | `{}`     |
+| `ingress.tls`              | Enable TLS configuration for the host defined at `ingress.hostname` parameter                                                    | `false`  |
+| `ingress.extraHosts`       | An array with additional hostname(s) to be covered with the ingress record                                                       | `[]`     |
+| `ingress.extraPaths`       | An array with additional arbitrary paths that may need to be added to the ingress under the main host                            | `[]`     |
+| `ingress.extraTls`         | TLS configuration for additional hostname(s) to be covered with this ingress record                                              | `[]`     |
+| `ingress.extraRules`       | Additional rules to be covered with this ingress record                                                                          | `[]`     |
 
 ### Gateway API parameters
 
@@ -241,6 +242,7 @@ Data is kept by default in both runtimes, but the mechanism differs.
 | `gatewayApi.httpRoute.parentRefs`                             | Attach to existing Gateway(s) / GatewayClass via standard parentRefs                                                                          | `[]`    |
 | `gatewayApi.httpRoute.hostnames`                              | HTTPRoute spec.hostnames (SNI / Host header routing)                                                                                          | `[]`    |
 | `gatewayApi.httpRoute.path`                                   | Default path match when rules is empty (PathPrefix)                                                                                           | `{}`    |
+| `gatewayApi.httpRoute.servicePort`                            | Name of the service.ports entry the default rule routes to (empty: "http", or the only port). Ignored when rules is set                       | `""`    |
 | `gatewayApi.httpRoute.timeouts`                               | Timeouts injected into the generated default rule (only when rules is empty). Ignored when rules is set — put timeouts per-rule there instead | `{}`    |
 | `gatewayApi.httpRoute.rules`                                  | Full HTTPRoute spec.rules (if non-empty, overrides default path/backend rule).                                                                | `[]`    |
 | `gatewayApi.httpRoute.extraRules`                             | Rendered YAML appended after generated rules (advanced)                                                                                       | `""`    |
@@ -272,8 +274,7 @@ Data is kept by default in both runtimes, but the mechanism differs.
 
 | Name                                 | Description                                                            | Value   |
 | ------------------------------------ | ---------------------------------------------------------------------- | ------- |
-| `resources.limits`                   | The resources limits for the containers                                | `{}`    |
-| `resources.requests`                 | The requested resources for the containers                             | `{}`    |
+| `resources`                          | Container resource requests and limits (empty: none set)               | `{}`    |
 | `livenessProbe.enabled`              | Enable livenessProbe on containers                                     | `false` |
 | `livenessProbe.httpGet`              | HTTP GET probe configuration (path and port)                           | `{}`    |
 | `livenessProbe.initialDelaySeconds`  | Initial delay seconds for livenessProbe                                | `30`    |
@@ -364,14 +365,14 @@ Data is kept by default in both runtimes, but the mechanism differs.
 
 ### RBAC parameters
 
-| Name                                          | Description                                                      | Value   |
-| --------------------------------------------- | ---------------------------------------------------------------- | ------- |
-| `serviceAccount.create`                       | Specifies whether a ServiceAccount should be created             | `true`  |
-| `serviceAccount.name`                         | The name of the ServiceAccount to use.                           | `""`    |
-| `serviceAccount.annotations`                  | Additional Service Account annotations (evaluated as a template) | `{}`    |
-| `serviceAccount.automountServiceAccountToken` | Automount service account token for the server service account   | `true`  |
-| `rbac.create`                                 | Specifies whether RBAC resources should be created               | `false` |
-| `rbac.rules`                                  | Custom RBAC rules to set                                         | `[]`    |
+| Name                                          | Description                                                                       | Value   |
+| --------------------------------------------- | --------------------------------------------------------------------------------- | ------- |
+| `serviceAccount.create`                       | Specifies whether a ServiceAccount should be created                              | `true`  |
+| `serviceAccount.name`                         | The name of the ServiceAccount to use.                                            | `""`    |
+| `serviceAccount.annotations`                  | Additional Service Account annotations (evaluated as a template)                  | `{}`    |
+| `serviceAccount.automountServiceAccountToken` | Mount an API token into the pod (set on both the ServiceAccount and the pod spec) | `false` |
+| `rbac.create`                                 | Specifies whether RBAC resources should be created                                | `false` |
+| `rbac.rules`                                  | Custom RBAC rules to set                                                          | `[]`    |
 
 ### Autoscaling parameters
 
@@ -385,11 +386,11 @@ Data is kept by default in both runtimes, but the mechanism differs.
 
 ### Pod Disruption Budget parameters
 
-| Name                                 | Description                                                        | Value   |
-| ------------------------------------ | ------------------------------------------------------------------ | ------- |
-| `podDisruptionBudget.enabled`        | Enable PodDisruptionBudget                                         | `false` |
-| `podDisruptionBudget.minAvailable`   | Min number of pods that must still be available after the eviction | `1`     |
-| `podDisruptionBudget.maxUnavailable` | Max number of pods that can be unavailable after the eviction      | `""`    |
+| Name                                 | Description                                                                                                 | Value   |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------- | ------- |
+| `podDisruptionBudget.enabled`        | Enable PodDisruptionBudget                                                                                  | `false` |
+| `podDisruptionBudget.minAvailable`   | Min number of pods that must still be available after the eviction                                          | `1`     |
+| `podDisruptionBudget.maxUnavailable` | Max number of pods that can be unavailable after the eviction (takes precedence over minAvailable when set) | `""`    |
 
 ### Network Policy parameters
 
@@ -439,10 +440,16 @@ Data is kept by default in both runtimes, but the mechanism differs.
 | `priorityClassName`                           | pods' priorityClassName                                                                                                                    | `""`            |
 | `topologySpreadConstraints`                   | Topology Spread Constraints for pod assignment spread across your cluster among failure-domains                                            | `[]`            |
 | `schedulerName`                               | Name of the k8s scheduler (other than default) for pods                                                                                    | `""`            |
-| `terminationGracePeriodSeconds`               | Seconds pod needs to terminate gracefully                                                                                                  | `""`            |
+| `terminationGracePeriodSeconds`               | Seconds pod needs to terminate gracefully (empty uses the Kubernetes default of 30; 0 is honoured)                                         | `""`            |
 | `runtimeClassName`                            | Runtime Class Name for pods                                                                                                                | `""`            |
 | `hostAliases`                                 | pods host aliases                                                                                                                          | `[]`            |
 | `extraDeploy`                                 | Array of extra objects to deploy with the release (supports templating)                                                                    | `[]`            |
+
+### Custom values
+
+| Name          | Description                                                               | Value |
+| ------------- | ------------------------------------------------------------------------- | ----- |
+| `extraValues` | Free-form values for your own templates (extraDeploy, tpl-enabled fields) | `{}`  |
 
 ## Gateway API notes
 

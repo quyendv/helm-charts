@@ -2,32 +2,16 @@
 {{- if not .Values.gatewayApi.httpRedirect.parentRefs }}
 {{- fail "gatewayApi.httpRedirect.parentRefs is required when gatewayApi.httpRedirect.enabled is true" }}
 {{- end }}
-{{- $hn := .Values.gatewayApi.httpRedirect.hostnames | default list }}
-{{- if and (eq (len $hn) 0) .Values.gatewayApi.httpRoute.hostnames }}
-{{- $hn = .Values.gatewayApi.httpRoute.hostnames }}
-{{- end }}
-{{- if and (eq (len $hn) 0) .Values.gatewayApi.hostname }}
-{{- $hn = list .Values.gatewayApi.hostname }}
-{{- end }}
-{{- $hn = compact $hn | uniq }}
+{{- /* Default to the main HTTPRoute's hostnames, gatewayApi.hostname included. */}}
+{{- $hn := .Values.gatewayApi.httpRedirect.hostnames | default (include "generic-app.gatewayApi.hostnames" . | fromJsonArray) | compact | uniq }}
 apiVersion: {{ include "generic-app.gatewayApi.httpRoute.apiVersion" . }}
 kind: HTTPRoute
 metadata:
   name: {{ default (printf "%s-http-redirect" (include "generic-app.fullname" .)) .Values.gatewayApi.httpRedirect.name | trunc 63 | trimSuffix "-" | quote }}
   namespace: {{ include "generic-app.namespace" . | quote }}
-  labels:
-    {{- include "generic-app.labels" . | nindent 4 }}
-    {{- with .Values.gatewayApi.httpRedirect.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- if or .Values.gatewayApi.httpRedirect.annotations .Values.commonAnnotations }}
-  annotations:
-    {{- if .Values.gatewayApi.httpRedirect.annotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.gatewayApi.httpRedirect.annotations "context" $) | nindent 4 }}
-    {{- end }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
+  labels: {{- include "generic-app.labels" . | fromYaml | merge (.Values.gatewayApi.httpRedirect.labels | default dict | deepCopy) | toYaml | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "annotations" .Values.gatewayApi.httpRedirect.annotations "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   parentRefs:

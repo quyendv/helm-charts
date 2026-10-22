@@ -5,8 +5,8 @@ metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- with .Values.commonAnnotations }}
-  annotations: {{- toYaml . | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   podSelector:
@@ -18,14 +18,20 @@ spec:
     {{- if .Values.networkPolicy.allowExternal }}
     - {}
     {{- else }}
-    - ports:
-      {{- range $name, $port := .Values.service.ports }}
-        - protocol: TCP
-          port: {{ $port }}
-      {{- end }}
-      from:
+    {{- /*
+    NetworkPolicy ports are matched against the pod, so these are the container
+    ports, not the Service ports (which may differ: Service 80 -> container 8080).
+    */}}
+    - from:
         - podSelector:
             matchLabels: {{- include "generic-app.selectorLabels" . | nindent 14 }}
+      {{- with include "generic-app.containerPorts" . | fromYaml }}
+      ports:
+        {{- range $name, $port := . }}
+        - protocol: TCP
+          port: {{ $port }}
+        {{- end }}
+      {{- end }}
     {{- end }}
     {{- if .Values.networkPolicy.extraIngress }}
     {{- include "generic-app.tplvalues.render" ( dict "value" .Values.networkPolicy.extraIngress "context" $ ) | nindent 4 }}

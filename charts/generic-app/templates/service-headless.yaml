@@ -1,24 +1,33 @@
-{{- if and .Values.service.enabled (eq .Values.kind "StatefulSet") }}
+{{- /*
+The StatefulSet's governing Service. It exists whenever kind is StatefulSet,
+independent of service.enabled, because spec.serviceName must point at a real
+Service for the pods to get stable DNS names.
+*/}}
+{{- if eq .Values.kind "StatefulSet" }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "generic-app.fullname" . }}-headless
+  name: {{ include "generic-app.headlessServiceName" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
-  labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- with .Values.commonAnnotations }}
-  annotations: {{- toYaml . | nindent 4 }}
+  labels:
+    {{- include "generic-app.labels" . | nindent 4 }}
+    {{- /* Lets the ServiceMonitor exclude this Service; otherwise every pod is scraped twice. */}}
+    generic-app/headless: "true"
+  {{- with include "generic-app.annotations" (dict "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   type: ClusterIP
   clusterIP: None
   publishNotReadyAddresses: true
+  {{- with include "generic-app.containerPorts" . | fromYaml }}
   ports:
-    {{- range $name, $port := .Values.service.ports }}
+    {{- range $name, $port := . }}
     - name: {{ $name }}
       port: {{ $port }}
       targetPort: {{ $name }}
       protocol: TCP
     {{- end }}
+  {{- end }}
   selector: {{- include "generic-app.selectorLabels" . | nindent 4 }}
 {{- end }}
-

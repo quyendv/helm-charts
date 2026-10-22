@@ -11,6 +11,7 @@ image:
   tag: "1.0.0"
 
 service:
+  enabled: true
   type: ClusterIP
   ports:
     http: 8080
@@ -227,8 +228,8 @@ extraDeploy:
       app-name: {{ include "generic-app.fullname" . }}
       app-version: {{ .Chart.AppVersion }}
       release-name: {{ .Release.Name }}
-      api-key: {{ .Values.apiKey | default "default-api-key" }}
-      database-url: postgresql://{{ .Values.database.host | default "localhost" }}:5432/{{ .Values.database.name | default "mydb" }}
+      api-key: {{ .Values.extraValues.apiKey | default "default-api-key" }}
+      database-url: postgresql://{{ .Values.extraValues.database.host | default "localhost" }}:5432/{{ .Values.extraValues.database.name | default "mydb" }}
 
   # ============================================================================
   # Example 6: Init Database Job (block scalar — uses templates + conditionals)
@@ -438,3 +439,11 @@ extraDeploy:
       resources:
         requests:
           storage: 8Gi
+
+# Values referenced by the templates above. Custom keys go under extraValues:
+# the chart's values schema rejects unknown top-level keys.
+extraValues:
+  apiKey: change-me
+  database:
+    host: postgres.database.svc
+    name: myapp

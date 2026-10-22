@@ -5,36 +5,25 @@
 {{- if not .Values.service.enabled }}
 {{- fail "service.enabled must be true when gatewayApi.enabled is true (HTTPRoute targets the chart Service)" }}
 {{- end }}
+{{- $portName := "" }}
+{{- if not .Values.gatewayApi.httpRoute.rules }}
+{{- $portName = include "generic-app.service.portName" (dict "port" .Values.gatewayApi.httpRoute.servicePort "field" "gatewayApi.httpRoute.servicePort" "context" $) }}
+{{- end }}
 apiVersion: {{ include "generic-app.gatewayApi.httpRoute.apiVersion" . }}
 kind: HTTPRoute
 metadata:
   name: {{ include "generic-app.gatewayApi.httpRoute.resourceName" . | quote }}
   namespace: {{ include "generic-app.namespace" . | quote }}
-  labels:
-    {{- include "generic-app.labels" . | nindent 4 }}
-    {{- with .Values.gatewayApi.httpRoute.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- if or .Values.gatewayApi.httpRoute.annotations .Values.commonAnnotations }}
-  annotations:
-    {{- if .Values.gatewayApi.httpRoute.annotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.gatewayApi.httpRoute.annotations "context" $) | nindent 4 }}
-    {{- end }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
+  labels: {{- include "generic-app.labels" . | fromYaml | merge (.Values.gatewayApi.httpRoute.labels | default dict | deepCopy) | toYaml | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "annotations" .Values.gatewayApi.httpRoute.annotations "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   parentRefs:
 {{- toYaml .Values.gatewayApi.httpRoute.parentRefs | nindent 4 }}
-  {{- $hn := .Values.gatewayApi.httpRoute.hostnames | default list }}
-  {{- if .Values.gatewayApi.hostname }}
-  {{- $hn = concat $hn (list .Values.gatewayApi.hostname) }}
-  {{- end }}
-  {{- $hn = compact $hn | uniq }}
-  {{- if $hn }}
+  {{- with include "generic-app.gatewayApi.hostnames" . | fromJsonArray }}
   hostnames:
-    {{- range $hn }}
+    {{- range . }}
     - {{ . | quote }}
     {{- end }}
   {{- end }}
@@ -67,10 +56,10 @@ spec:
         - group: ""
           kind: Service
           name: {{ include "generic-app.fullname" . }}
-          port: {{ index .Values.service.ports "http" }}
+          port: {{ index .Values.service.ports $portName }}
           weight: 1
     {{- end }}
     {{- if .Values.gatewayApi.httpRoute.extraRules }}
-    {{- tpl .Values.gatewayApi.httpRoute.extraRules . | nindent 4 }}
+    {{- include "generic-app.tplvalues.render" (dict "value" .Values.gatewayApi.httpRoute.extraRules "context" $) | nindent 4 }}
     {{- end }}
 {{- end }}

@@ -45,24 +45,24 @@ Return the namespace
 
 {{/*
 ================================================================================
-LABELS HELPERS
+LABELS AND ANNOTATIONS HELPERS
 ================================================================================
 */}}
 
 {{/*
-Common labels
+Common labels.
+commonLabels may override the standard labels, but never the selector labels:
+those are immutable on workloads and must stay stable across upgrades.
 */}}
 {{- define "generic-app.labels" -}}
-helm.sh/chart: {{ include "generic-app.chart" . }}
-{{ include "generic-app.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- with .Values.commonLabels }}
-{{ toYaml . }}
-{{- end }}
-{{- end }}
+  {{- $selector := include "generic-app.selectorLabels" . | fromYaml -}}
+  {{- $standard := dict "helm.sh/chart" (include "generic-app.chart" .) "app.kubernetes.io/managed-by" .Release.Service -}}
+  {{- if .Chart.AppVersion -}}
+    {{- $_ := set $standard "app.kubernetes.io/version" (.Chart.AppVersion | toString) -}}
+  {{- end -}}
+  {{- $common := include "generic-app.tplvalues.render" (dict "value" (.Values.commonLabels | default dict) "context" .) | fromYaml -}}
+  {{- toYaml (merge $selector $common $standard) -}}
+{{- end -}}
 
 {{/*
 Selector labels
@@ -71,6 +71,36 @@ Selector labels
 app.kubernetes.io/name: {{ include "generic-app.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Pod labels: selector labels, then podLabels, then commonLabels.
+The version-bearing standard labels are left off on purpose so that a chart
+upgrade alone does not roll the pods.
+*/}}
+{{- define "generic-app.podLabels" -}}
+  {{- $selector := include "generic-app.selectorLabels" . | fromYaml -}}
+  {{- $pod := include "generic-app.tplvalues.render" (dict "value" (.Values.podLabels | default dict) "context" .) | fromYaml -}}
+  {{- $common := include "generic-app.tplvalues.render" (dict "value" (.Values.commonLabels | default dict) "context" .) | fromYaml -}}
+  {{- toYaml (merge $selector $pod $common) -}}
+{{- end -}}
+
+{{/*
+Resource annotations merged over commonAnnotations (both tpl-rendered). Emits
+nothing when the result is empty, so callers can wrap it in `with`:
+  {{- with include "generic-app.annotations" (dict "annotations" .Values.service.annotations "context" $) }}
+  annotations: {{- . | nindent 4 }}
+  {{- end }}
+Merging (rather than concatenating) keeps a key set in both maps from being
+emitted twice, which produced YAML with duplicate keys.
+*/}}
+{{- define "generic-app.annotations" -}}
+  {{- $common := include "generic-app.tplvalues.render" (dict "value" (.context.Values.commonAnnotations | default dict) "context" .context) | fromYaml -}}
+  {{- $own := include "generic-app.tplvalues.render" (dict "value" (.annotations | default dict) "context" .context) | fromYaml -}}
+  {{- $merged := merge $own $common -}}
+  {{- if $merged -}}
+    {{- toYaml $merged -}}
+  {{- end -}}
+{{- end -}}
 
 {{/*
 ================================================================================
@@ -96,116 +126,141 @@ IMAGE HELPERS
 */}}
 
 {{/*
-Return the proper image name
+Return the image reference: [registry/]repository[:tag][@digest].
+The chart ships no default image, so repository and one of tag/digest are required.
 */}}
 {{- define "generic-app.image" -}}
-  {{- $registryName := .Values.image.registry -}}
-  {{- $repositoryName := .Values.image.repository -}}
-  {{- $tag := .Values.image.tag | toString -}}
-  {{- if .Values.global }}
-    {{- if .Values.global.imageRegistry }}
-      {{- $registryName = .Values.global.imageRegistry -}}
-    {{- end -}}
+  {{- $registry := .Values.image.registry | default "" -}}
+  {{- if and .Values.global .Values.global.imageRegistry -}}
+    {{- $registry = .Values.global.imageRegistry -}}
   {{- end -}}
-  {{- if $registryName }}
-    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-  {{- else -}}
-    {{- printf "%s:%s" $repositoryName $tag -}}
+  {{- $repository := required "image.repository is required: this chart has no default image" .Values.image.repository -}}
+  {{- $tag := default "" .Values.image.tag | toString -}}
+  {{- $digest := default "" .Values.image.digest -}}
+  {{- if and (not $tag) (not $digest) -}}
+    {{- fail "image.tag or image.digest is required (an untagged image silently means :latest)" -}}
   {{- end -}}
+  {{- $ref := $repository -}}
+  {{- if $registry -}}
+    {{- $ref = printf "%s/%s" $registry $repository -}}
+  {{- end -}}
+  {{- if $tag -}}
+    {{- $ref = printf "%s:%s" $ref $tag -}}
+  {{- end -}}
+  {{- if $digest -}}
+    {{- $ref = printf "%s@%s" $ref $digest -}}
+  {{- end -}}
+  {{- $ref -}}
 {{- end -}}
 
 {{/*
-Return the proper Docker Image Registry Secret Names
+Return the image pull secrets list (global first), or nothing when there are none.
 */}}
 {{- define "generic-app.imagePullSecrets" -}}
-  {{- $pullSecrets := list }}
-
-  {{- if .Values.global }}
-    {{- range .Values.global.imagePullSecrets }}
-      {{- $pullSecrets = append $pullSecrets . }}
-    {{- end }}
-  {{- end }}
-
-  {{- range .Values.image.pullSecrets }}
-    {{- $pullSecrets = append $pullSecrets . }}
-  {{- end }}
-
-  {{- if (not (empty $pullSecrets)) }}
-imagePullSecrets:
-    {{- range $pullSecrets }}
-  - name: {{ . }}
-    {{- end }}
-  {{- end }}
-{{- end -}}
-
-{{/*
-Check if there are rolling tags in the images
-*/}}
-{{- define "generic-app.checkRollingTags" -}}
-  {{- $rollingTag := .Values.image.tag | toString -}}
-  {{- if and (contains "latest" $rollingTag) (not .Values.image.pullPolicy) }}
-WARNING: Rolling tag detected ({{ .Values.image.repository }}:{{ .Values.image.tag }}), please note that it is strongly recommended to avoid using rolling tags in a production environment.
-+info https://docs.bitnami.com/containers/how-to/understand-rolling-tags-containers/
-  {{- end }}
-{{- end -}}
-
-{{/*
-Warn when both Ingress and Gateway API are enabled (duplicate north–south paths).
-*/}}
-{{- define "generic-app.checkGatewayApiIngressConflict" -}}
-  {{- if and .Values.ingress.enabled .Values.gatewayApi.enabled }}
-WARNING: Both ingress.enabled and gatewayApi.enabled are true. In production, prefer a single entry path (Ingress or Gateway API) for the same hostname unless you intentionally split traffic.
-  {{- end }}
+  {{- $pullSecrets := list -}}
+  {{- if .Values.global -}}
+    {{- range .Values.global.imagePullSecrets -}}
+      {{- $pullSecrets = append $pullSecrets . -}}
+    {{- end -}}
+  {{- end -}}
+  {{- range .Values.image.pullSecrets -}}
+    {{- $pullSecrets = append $pullSecrets . -}}
+  {{- end -}}
+  {{- $refs := list -}}
+  {{- range $pullSecrets | uniq -}}
+    {{- $refs = append $refs (dict "name" .) -}}
+  {{- end -}}
+  {{- if $refs -}}
+    {{- toYaml $refs -}}
+  {{- end -}}
 {{- end -}}
 
 {{/*
 ================================================================================
-API VERSION HELPERS
+PORT HELPERS
 ================================================================================
 */}}
 
 {{/*
-Return the appropriate apiVersion for deployment/statefulset.
+Ports of the main container as a YAML name -> number map (empty when none).
+containerPorts wins; when it is empty the pod mirrors service.ports, but only
+while the Service is enabled. Entries set to null are dropped.
+Usage: {{- $ports := include "generic-app.containerPorts" . | fromYaml }}
 */}}
-{{- define "generic-app.workload.apiVersion" -}}
-  {{- if eq .Values.kind "StatefulSet" -}}
-    {{- print "apps/v1" -}}
+{{- define "generic-app.containerPorts" -}}
+  {{- $ports := .Values.containerPorts | default dict -}}
+  {{- if and (not $ports) .Values.service.enabled -}}
+    {{- $ports = .Values.service.ports | default dict -}}
+  {{- end -}}
+  {{- $out := dict -}}
+  {{- range $name, $port := $ports -}}
+    {{- if not (kindIs "invalid" $port) -}}
+      {{- $_ := set $out $name $port -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $out -}}
+    {{- toYaml $out -}}
+  {{- end -}}
+{{- end -}}
+
+{{/*
+Name of the service.ports entry that Ingress, HTTPRoute and NOTES route to.
+Resolution: the explicit name -> "http" -> the only port -> fail.
+Usage: {{ include "generic-app.service.portName" (dict "port" .Values.ingress.servicePort "field" "ingress.servicePort" "context" $) }}
+*/}}
+{{- define "generic-app.service.portName" -}}
+  {{- $ports := .context.Values.service.ports | default dict -}}
+  {{- $want := default "" .port | toString -}}
+  {{- if $want -}}
+    {{- if not (hasKey $ports $want) -}}
+      {{- fail (printf "%s is %q, which is not a key of service.ports" .field $want) -}}
+    {{- end -}}
+    {{- $want -}}
+  {{- else if hasKey $ports "http" -}}
+    {{- print "http" -}}
+  {{- else if eq (len $ports) 1 -}}
+    {{- keys $ports | first -}}
+  {{- else if eq (len $ports) 0 -}}
+    {{- fail (printf "%s cannot be resolved: service.ports is empty" .field) -}}
   {{- else -}}
-    {{- print "apps/v1" -}}
+    {{- fail (printf "%s is required: service.ports has no \"http\" entry and %d ports to choose from (%s)" .field (len $ports) (keys $ports | sortAlpha | join ", ")) -}}
   {{- end -}}
 {{- end -}}
 
 {{/*
-Return the appropriate apiVersion for ingress.
+Headless Service name for the StatefulSet (63 char limit).
 */}}
-{{- define "generic-app.ingress.apiVersion" -}}
-  {{- if .Values.ingress.apiVersion }}
-    {{- .Values.ingress.apiVersion }}
-  {{- else if semverCompare "<1.14-0" .Capabilities.KubeVersion.GitVersion }}
-    {{- print "extensions/v1beta1" }}
-  {{- else if semverCompare "<1.19-0" .Capabilities.KubeVersion.GitVersion }}
-    {{- print "networking.k8s.io/v1beta1" }}
-  {{- else }}
-    {{- print "networking.k8s.io/v1" }}
-  {{- end }}
-{{- end }}
-
-{{/*
-================================================================================
-INGRESS HELPERS
-================================================================================
-*/}}
-
-{{/*
-Return true if cert-manager required annotations for TLS signed certificates are set in the Ingress annotations
-Ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
-*/}}
-{{- define "generic-app.ingress.certManagerRequest" -}}
-  {{- if or (hasKey .Values.ingress.annotations "cert-manager.io/cluster-issuer") (hasKey .Values.ingress.annotations "cert-manager.io/issuer") }}
-    {{- true -}}
-  {{- end -}}
+{{- define "generic-app.headlessServiceName" -}}
+  {{- printf "%s-headless" (include "generic-app.fullname" . | trunc 54 | trimSuffix "-") -}}
 {{- end -}}
 
+{{/*
+Return true when a value is set: not null and not the empty string. Unlike a
+plain `if`, this treats 0 and false as set.
+Usage: {{- if include "generic-app.isSet" .Values.podDisruptionBudget.maxUnavailable }}
+*/}}
+{{- define "generic-app.isSet" -}}
+  {{- if and (not (kindIs "invalid" .)) (ne (toString .) "") -}}true{{- end -}}
+{{- end -}}
+
+{{/*
+================================================================================
+GATEWAY API HELPERS
+================================================================================
+*/}}
+
+{{/*
+Effective HTTPRoute hostnames as JSON: httpRoute.hostnames plus gatewayApi.hostname.
+Shared by the HTTPRoute, the redirect route and the Certificate.
+Usage: {{- $hostnames := include "generic-app.gatewayApi.hostnames" . | fromJsonArray }}
+*/}}
+{{- define "generic-app.gatewayApi.hostnames" -}}
+  {{- $hn := .Values.gatewayApi.httpRoute.hostnames | default list -}}
+  {{- if .Values.gatewayApi.hostname -}}
+    {{- $hn = concat $hn (list .Values.gatewayApi.hostname) -}}
+  {{- end -}}
+  {{- compact $hn | uniq | toJson -}}
+{{- end -}}
 {{/*
 Return HTTPRoute apiVersion for Gateway API
 */}}
@@ -321,7 +376,28 @@ Return the proper Storage Class
 ================================================================================
 VALIDATION HELPERS
 ================================================================================
+Hard errors live in the template that owns the resource (fail/required); the
+checks below are warnings printed in NOTES.txt.
 */}}
+
+{{/*
+Warn on mutable image tags.
+*/}}
+{{- define "generic-app.checkRollingTags" -}}
+  {{- $tag := default "" .Values.image.tag | toString -}}
+  {{- if and (not .Values.image.digest) (or (eq $tag "latest") (hasSuffix "-latest" $tag)) }}
+WARNING: Rolling tag detected ({{ .Values.image.repository }}:{{ $tag }}). Pin an immutable tag or set image.digest: with a rolling tag, nodes run whichever image they pulled last.
+  {{- end }}
+{{- end -}}
+
+{{/*
+Warn when both Ingress and Gateway API are enabled (duplicate north–south paths).
+*/}}
+{{- define "generic-app.checkGatewayApiIngressConflict" -}}
+  {{- if and .Values.ingress.enabled .Values.gatewayApi.enabled }}
+WARNING: Both ingress.enabled and gatewayApi.enabled are true. In production, prefer a single entry path (Ingress or Gateway API) for the same hostname unless you intentionally split traffic.
+  {{- end }}
+{{- end -}}
 
 {{/*
 Warn when autoscaling is enabled for a DaemonSet (HPA does not apply).
@@ -333,27 +409,24 @@ WARNING: autoscaling.enabled is true but kind is DaemonSet. HPA does not apply t
 {{- end -}}
 
 {{/*
-Warn when serviceMonitor.enabled but the configured port is not in service.ports.
+Warn when the ServiceMonitor port is not a port of the Service.
 */}}
 {{- define "generic-app.checkServiceMonitorPort" -}}
   {{- if and .Values.serviceMonitor.enabled .Values.service.enabled -}}
-    {{- $port := .Values.serviceMonitor.port -}}
-    {{- $found := false -}}
-    {{- range $name, $_ := .Values.service.ports -}}
-      {{- if eq $name $port -}}
-        {{- $found = true -}}
-      {{- end -}}
+    {{- $names := keys (.Values.service.ports | default dict) -}}
+    {{- range .Values.service.extraPorts -}}
+      {{- if kindIs "map" . }}{{ $names = append $names (toString .name) }}{{ end -}}
     {{- end -}}
-    {{- if not $found -}}
-WARNING: serviceMonitor.enabled is true but port "{{ $port }}" is not found in service.ports. The ServiceMonitor will not scrape until this port is added to service.ports.
+    {{- if not (has .Values.serviceMonitor.port $names) }}
+WARNING: serviceMonitor.port "{{ .Values.serviceMonitor.port }}" is not a port of the Service (service.ports / service.extraPorts). The ServiceMonitor will not scrape anything until it is.
     {{- end -}}
   {{- end -}}
 {{- end -}}
 
 {{/*
 Warn when a service port name has no matching container port.
-The Service targets ports by NAME, so every service.ports key must exist in the
-pod's container ports (containerPorts, or service.ports itself when it falls back).
+The Service targets ports by NAME. A name missing from containerPorts can still
+be valid when a sidecar declares it, so this is a warning rather than an error.
 */}}
 {{- define "generic-app.checkServicePortNames" -}}
   {{- if and .Values.service.enabled .Values.containerPorts -}}
@@ -363,14 +436,14 @@ pod's container ports (containerPorts, or service.ports itself when it falls bac
         {{- $missing = append $missing $name -}}
       {{- end -}}
     {{- end -}}
-    {{- if $missing -}}
-WARNING: service.ports name(s) "{{ join ", " $missing }}" have no matching entry in containerPorts. The Service targets ports by name, so it will not route to the pod until containerPorts declares the same name(s) (remember Helm merges maps: drop an unwanted default with `service.ports.<name>: null`).
+    {{- if $missing }}
+WARNING: service.ports name(s) "{{ join ", " $missing }}" have no matching entry in containerPorts. The Service targets ports by name, so it will not route to the pod unless containerPorts (or a sidecar) declares the same name(s).
     {{- end -}}
   {{- end -}}
 {{- end -}}
 
 {{/*
-Compile all warnings into a single message.
+Warn about ExternalSecret settings that make the resource useless.
 */}}
 {{- define "generic-app.checkExternalSecret" -}}
   {{- $msgs := list -}}
@@ -385,15 +458,57 @@ Compile all warnings into a single message.
   {{- join "\n" $msgs -}}
 {{- end -}}
 
+{{/*
+Warn when NGF presets are configured but cannot be attached to the route.
+*/}}
+{{- define "generic-app.checkNginxGatewayFabricRules" -}}
+  {{- $ngf := .Values.gatewayApi.nginxGatewayFabric | default dict -}}
+  {{- if and .Values.gatewayApi.enabled $ngf.enabled .Values.gatewayApi.httpRoute.rules -}}
+    {{- $t := $ngf.upstreamProxyTimeouts | default dict -}}
+    {{- $snippets := $ngf.snippets | default dict -}}
+    {{- if or $t.connect $t.read $t.send $snippets.extra }}
+WARNING: gatewayApi.httpRoute.rules is set, so the chart does not attach the NGF SnippetsFilter "{{ include "generic-app.gatewayApi.nginxGatewayFabric.snippetsFilterName" . }}" to the route. Reference it from your rules with an ExtensionRef filter, or the upstream timeouts/snippets have no effect.
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{/*
+Warn when a ReadWriteOnce volume is shared by pods that may run on different nodes.
+*/}}
+{{- define "generic-app.checkSharedRwoVolume" -}}
+  {{- if and .Values.persistence.enabled (ne .Values.kind "StatefulSet") (has "ReadWriteOnce" .Values.persistence.accessModes) -}}
+    {{- $multi := or .Values.autoscaling.enabled (gt (int .Values.replicaCount) 1) (eq .Values.kind "DaemonSet") -}}
+    {{- $rolling := and (eq .Values.kind "Deployment") (eq (default "RollingUpdate" .Values.updateStrategy.type) "RollingUpdate") -}}
+    {{- if or $multi $rolling }}
+WARNING: persistence uses a ReadWriteOnce claim shared by {{ ternary "several pods" "old and new pods during a rolling update" $multi }}. Pods scheduled on another node cannot attach it and stay Pending. Use kind=StatefulSet, a ReadWriteMany storage class, or updateStrategy.type=Recreate with a single replica.
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{/*
+Warn when a Role is created but the pod cannot use it.
+*/}}
+{{- define "generic-app.checkRbacToken" -}}
+  {{- if and .Values.rbac.create (not .Values.serviceAccount.automountServiceAccountToken) }}
+WARNING: rbac.create is true but serviceAccount.automountServiceAccountToken is false, so the pod gets no API token to use the Role with. Set it to true, or mount a projected token yourself.
+  {{- end -}}
+{{- end -}}
+
+{{/*
+Compile all warnings into a single message.
+*/}}
 {{- define "generic-app.validateValues" -}}
   {{- $messages := list -}}
-  {{- $messages := append $messages (include "generic-app.checkRollingTags" .) -}}
-  {{- $messages := append $messages (include "generic-app.checkGatewayApiIngressConflict" .) -}}
-  {{- $messages := append $messages (include "generic-app.checkDaemonSetAutoscaling" .) -}}
-  {{- $messages := append $messages (include "generic-app.checkServiceMonitorPort" .) -}}
-  {{- $messages := append $messages (include "generic-app.checkServicePortNames" .) -}}
-  {{- $messages := append $messages (include "generic-app.checkExternalSecret" .) -}}
-  {{- $messages := without $messages "" -}}
+  {{- $messages = append $messages (include "generic-app.checkRollingTags" . | trim) -}}
+  {{- $messages = append $messages (include "generic-app.checkGatewayApiIngressConflict" . | trim) -}}
+  {{- $messages = append $messages (include "generic-app.checkDaemonSetAutoscaling" . | trim) -}}
+  {{- $messages = append $messages (include "generic-app.checkServiceMonitorPort" . | trim) -}}
+  {{- $messages = append $messages (include "generic-app.checkServicePortNames" . | trim) -}}
+  {{- $messages = append $messages (include "generic-app.checkExternalSecret" . | trim) -}}
+  {{- $messages = append $messages (include "generic-app.checkNginxGatewayFabricRules" . | trim) -}}
+  {{- $messages = append $messages (include "generic-app.checkSharedRwoVolume" . | trim) -}}
+  {{- $messages = append $messages (include "generic-app.checkRbacToken" . | trim) -}}
+  {{- $messages = without $messages "" -}}
   {{- $message := join "\n" $messages -}}
 
   {{- if $message -}}
@@ -408,20 +523,21 @@ POD HELPERS
 */}}
 
 {{/*
-Return the pod annotations
+Return the pod annotations: podAnnotations plus config checksums that roll the
+pods when the chart-managed ConfigMap/Secret changes.
 */}}
 {{- define "generic-app.podAnnotations" -}}
-  {{- if .Values.podAnnotations }}
-{{ include "generic-app.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) }}
-  {{- end }}
-  {{- if .Values.configMaps.enabled }}
-checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-  {{- end }}
-  {{- if .Values.secrets.enabled }}
-checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
-  {{- end }}
+  {{- $annotations := include "generic-app.tplvalues.render" (dict "value" (.Values.podAnnotations | default dict) "context" .) | fromYaml -}}
+  {{- if .Values.configMaps.enabled -}}
+    {{- $_ := set $annotations "checksum/configmap" (include (print $.Template.BasePath "/configmap.yaml") . | sha256sum) -}}
+  {{- end -}}
+  {{- if .Values.secrets.enabled -}}
+    {{- $_ := set $annotations "checksum/secret" (include (print $.Template.BasePath "/secret.yaml") . | sha256sum) -}}
+  {{- end -}}
+  {{- if $annotations -}}
+    {{- toYaml $annotations -}}
+  {{- end -}}
 {{- end -}}
-
 {{/*
 ================================================================================
 AFFINITY HELPERS

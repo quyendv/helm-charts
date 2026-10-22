@@ -1,18 +1,15 @@
 {{- if .Values.service.enabled }}
+{{- if and (not .Values.service.ports) (not .Values.service.extraPorts) }}
+{{- fail "service.enabled is true but service.ports is empty: declare the port(s) to expose, e.g. --set service.ports.http=8080" }}
+{{- end }}
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- if or .Values.service.annotations .Values.commonAnnotations }}
-  annotations:
-    {{- if .Values.service.annotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.service.annotations "context" $) | nindent 4 }}
-    {{- end }}
-    {{- if .Values.commonAnnotations }}
-    {{- include "generic-app.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- end }}
+  {{- with include "generic-app.annotations" (dict "annotations" .Values.service.annotations "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   type: {{ .Values.service.type }}
@@ -22,33 +19,34 @@ spec:
   {{- if or (eq .Values.service.type "LoadBalancer") (eq .Values.service.type "NodePort") }}
   externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy | quote }}
   {{- end }}
-  {{- if and (eq .Values.service.type "LoadBalancer") (not (empty .Values.service.loadBalancerSourceRanges)) }}
-  loadBalancerSourceRanges: {{ .Values.service.loadBalancerSourceRanges | toYaml | nindent 4 }}
+  {{- if and (eq .Values.service.type "LoadBalancer") .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml .Values.service.loadBalancerSourceRanges | nindent 4 }}
   {{- end }}
-  {{- if and (eq .Values.service.type "LoadBalancer") (not (empty .Values.service.loadBalancerIP)) }}
+  {{- if and (eq .Values.service.type "LoadBalancer") .Values.service.loadBalancerIP }}
   loadBalancerIP: {{ .Values.service.loadBalancerIP }}
   {{- end }}
-  {{- if .Values.service.sessionAffinity }}
-  sessionAffinity: {{ .Values.service.sessionAffinity }}
+  {{- with .Values.service.sessionAffinity }}
+  sessionAffinity: {{ . }}
   {{- end }}
-  {{- if .Values.service.sessionAffinityConfig }}
-  sessionAffinityConfig: {{- include "generic-app.tplvalues.render" (dict "value" .Values.service.sessionAffinityConfig "context" $) | nindent 4 }}
+  {{- with .Values.service.sessionAffinityConfig }}
+  sessionAffinityConfig: {{- include "generic-app.tplvalues.render" (dict "value" . "context" $) | nindent 4 }}
   {{- end }}
   ports:
     {{- range $name, $port := .Values.service.ports }}
+    {{- if not (kindIs "invalid" $port) }}
     - name: {{ $name }}
       port: {{ $port }}
       targetPort: {{ $name }}
       protocol: TCP
-      {{- if (and (or (eq $.Values.service.type "NodePort") (eq $.Values.service.type "LoadBalancer")) (not (empty $.Values.service.nodePorts))) }}
-      {{- if index $.Values.service.nodePorts $name }}
-      nodePort: {{ index $.Values.service.nodePorts $name }}
+      {{- if or (eq $.Values.service.type "NodePort") (eq $.Values.service.type "LoadBalancer") }}
+      {{- with (index ($.Values.service.nodePorts | default dict) $name) }}
+      nodePort: {{ . }}
       {{- end }}
       {{- end }}
     {{- end }}
-    {{- if .Values.service.extraPorts }}
-    {{- include "generic-app.tplvalues.render" (dict "value" .Values.service.extraPorts "context" $) | nindent 4 }}
+    {{- end }}
+    {{- with .Values.service.extraPorts }}
+    {{- include "generic-app.tplvalues.render" (dict "value" . "context" $) | nindent 4 }}
     {{- end }}
   selector: {{- include "generic-app.selectorLabels" . | nindent 4 }}
 {{- end }}
-

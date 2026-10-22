@@ -1,23 +1,22 @@
 {{- if eq .Values.kind "Deployment" }}
-apiVersion: {{ include "generic-app.workload.apiVersion" . }}
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "generic-app.fullname" . }}
   namespace: {{ include "generic-app.namespace" . | quote }}
   labels: {{- include "generic-app.labels" . | nindent 4 }}
-  {{- with .Values.commonAnnotations }}
-  annotations: {{- toYaml . | nindent 4 }}
+  {{- with include "generic-app.annotations" (dict "context" $) }}
+  annotations: {{- . | nindent 4 }}
   {{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
-  {{- if .Values.updateStrategy }}
-  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- with .Values.updateStrategy }}
+  strategy: {{- toYaml . | nindent 4 }}
   {{- end }}
   minReadySeconds: {{ .Values.minReadySeconds }}
   selector:
     matchLabels: {{- include "generic-app.selectorLabels" . | nindent 6 }}
   template: {{- include "generic-app.podTemplate" . | nindent 4 }}
 {{- end }}
-
