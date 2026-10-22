@@ -1,0 +1,23 @@
+# SQLite: a file on the application's volume, so the job runs on that pod's node.
+fullnameOverride: app-sqlite-backup
+engine: sqlite
+schedule: "0 3 * * *"
+s3:
+  prefix: backups/app/sqlite
+  keepRemote: 30
+  existingSecret: backup-s3
+fileStore:
+  enabled: true
+  claimName: app-data
+  ownerSelector:
+    app.kubernetes.io/instance: app
+env:
+  SQLITE_PATH: /data/app.db
+# Root with three capabilities: the backend must take part in the application's
+# locking (see the sqlite backend's README).
+securityContext:
+  runAsUser: 0
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+    add: [CHOWN, DAC_OVERRIDE, FOWNER]

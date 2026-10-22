@@ -33,7 +33,9 @@ name="${repo#*/}"
 tag="$chart-$version"
 
 # Previous release of this chart: the highest existing tag below this version.
-prev="$(git tag --list "$chart-*" | sed "s/^$chart-//" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+# A chart's first release has no tags, and grep then exits 1, which pipefail
+# would turn into a failure of the whole script.
+prev="$(git tag --list "$chart-*" | sed "s/^$chart-//" | { grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true; } \
   | { cat; echo "$version"; } | sort -V -u | awk -v v="$version" '$0 == v { print p; exit } { p = $0 }')"
 
 # Trim leading/trailing blank lines from the section.

@@ -1,0 +1,229 @@
+# Default values for platform-backup.
+# One release schedules one backup of one data store, using the images of
+# https://github.com/quyendv/platform-backup. Required: schedule, s3.prefix,
+# s3.keepRemote and a source for the S3 Secret (s3.existingSecret or
+# s3.externalSecret).
+
+## @section Backup parameters
+
+## @param engine Data store to back up: postgresql, mongodb, redis or sqlite. Selects the image
+##
+engine: postgresql
+
+## Image reference: <registry>/<engine>:<tag>[-<variant>]
+## @param image.registry Registry and path the per-engine images live under
+## @param image.tag Image release tag (empty uses the chart appVersion)
+## @param image.variant Image variant appended to the tag: pg14..pg17 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite
+## @param image.pullPolicy Image pull policy
+##
+image:
+  registry: ghcr.io/quyendv/platform-backup
+  tag: ""
+  variant: ""
+  pullPolicy: IfNotPresent
+
+## @param nameOverride String to partially override the chart name
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override the release fullname. The resulting name must contain "backup" and be at most 52 characters
+##
+fullnameOverride: ""
+
+## @param schedule [string] Cron schedule of the backup (REQUIRED)
+##
+schedule: ""
+## @param timeZone Time zone the schedule is read in
+##
+timeZone: UTC
+## @param suspend Suspend the schedule (Jobs already started keep running)
+##
+suspend: false
+## @param concurrencyPolicy What to do when a run is still going at the next tick (Forbid, Allow or Replace)
+##
+concurrencyPolicy: Forbid
+
+## @param keepLocal Runs kept in the scratch directory (KEEP_LOCAL); 0 disables pruning
+##
+keepLocal: 1
+## @param verifyReadback Download the uploaded artifact again and check its checksum (VERIFY_READBACK)
+##
+verifyReadback: false
+## @param host Where the backup runs, such as a cluster name (BACKUP_HOST): recorded in each run's _COMPLETE marker, its state file and notifications. Empty leaves the container hostname
+##
+host: ""
+## @param env [object] Extra environment variables as a name: value map, rendered sorted (e.g. SQLITE_PATH, NOTIFY_ON)
+## e.g:
+## env:
+##   NOTIFY_ON: failure
+##   SQLITE_PATH: /data/app.db
+##
+env: {}
+## @param extraEnv Extra environment variables as full EnvVar entries (valueFrom etc.), rendered after env
+##
+extraEnv: []
+
+## @section Object storage parameters
+
+s3:
+  ## @param s3.prefix [string] Key prefix inside the bucket (S3_PREFIX, REQUIRED)
+  ##
+  prefix: ""
+  ## @param s3.keepRemote [nullable] Runs kept in S3 (KEEP_REMOTE, REQUIRED); 0 disables pruning, it never means keep none
+  ##
+  keepRemote: null
+  ## @param s3.existingSecret Existing Secret with the AWS_* and S3_BUCKET keys, loaded with envFrom
+  ##
+  existingSecret: ""
+  ## Create the S3 Secret (<fullname>-s3) with the External Secrets Operator instead.
+  ## Mutually exclusive with s3.existingSecret.
+  ##
+  externalSecret:
+    ## @param s3.externalSecret.enabled Create the S3 Secret from an ExternalSecret
+    ##
+    enabled: false
+    ## @param s3.externalSecret.refreshInterval How often the operator refreshes the Secret
+    ##
+    refreshInterval: 1h
+    ## @param s3.externalSecret.secretStoreRef.kind Kind of the secret store (ClusterSecretStore or SecretStore)
+    ## @param s3.externalSecret.secretStoreRef.name Name of the secret store
+    ##
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: ""
+    ## @param s3.externalSecret.remoteKey Key in the secret store that holds the S3 settings
+    ##
+    remoteKey: ""
+    ## @param s3.externalSecret.properties [object, default: each S3 key to the property of the same name] Secret key (environment variable) -> property of the remote key. Set an entry to null to leave it out
+    ##
+    properties:
+      AWS_ACCESS_KEY_ID: AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: AWS_SECRET_ACCESS_KEY
+      AWS_ENDPOINT_URL_S3: AWS_ENDPOINT_URL_S3
+      AWS_REGION: AWS_REGION
+      S3_BUCKET: S3_BUCKET
+
+## @section Target parameters
+
+## Credentials for the data store, loaded with envFrom. Optional: a file store
+## (sqlite) usually needs none. POSTGRES_*, MONGODB_URI, REDIS_URL, ...
+##
+target:
+  ## @param target.existingSecret Existing Secret with the data store's credentials
+  ##
+  existingSecret: ""
+  ## Create the target Secret (<fullname>-target) with the External Secrets Operator instead.
+  ## Mutually exclusive with target.existingSecret.
+  ##
+  externalSecret:
+    ## @param target.externalSecret.enabled Create the target Secret from an ExternalSecret
+    ##
+    enabled: false
+    ## @param target.externalSecret.refreshInterval How often the operator refreshes the Secret
+    ##
+    refreshInterval: 1h
+    ## @param target.externalSecret.secretStoreRef.kind Kind of the secret store (ClusterSecretStore or SecretStore)
+    ## @param target.externalSecret.secretStoreRef.name Name of the secret store
+    ##
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: ""
+    ## @param target.externalSecret.data ExternalSecret spec.data, passed through verbatim
+    ##
+    data: []
+    ## @param target.externalSecret.dataFrom ExternalSecret spec.dataFrom, passed through verbatim
+    ##
+    dataFrom: []
+    ## @param target.externalSecret.template [object] ExternalSecret spec.target.template, passed through verbatim when non-empty
+    ##
+    template: {}
+
+## @section File store parameters
+
+## For a store that is a file on a volume (sqlite): mount the owner's claim and
+## run on the owner's node, which a ReadWriteOnce volume requires.
+##
+fileStore:
+  ## @param fileStore.enabled Mount the data store's PersistentVolumeClaim and run next to the pod that owns it
+  ##
+  enabled: false
+  ## @param fileStore.claimName PersistentVolumeClaim holding the data store (required when enabled)
+  ##
+  claimName: ""
+  ## @param fileStore.mountPath Where the claim is mounted in the container
+  ##
+  mountPath: /data
+  ## @param fileStore.readOnly Mount the claim read-only. Leave false for sqlite, which must take part in the application's locking
+  ##
+  readOnly: false
+  ## @param fileStore.ownerSelector [object] matchLabels of the pod that owns the claim (required when enabled)
+  ##
+  ownerSelector: {}
+
+## @section Job parameters
+
+## @param scratch.sizeLimit Size limit of the emptyDir mounted at /backup, where each run is assembled
+##
+scratch:
+  sizeLimit: 10Gi
+
+job:
+  ## @param job.backoffLimit Retries of a failed run before the Job fails
+  ##
+  backoffLimit: 2
+  ## @param job.activeDeadlineSeconds Seconds a run may take before it is killed
+  ##
+  activeDeadlineSeconds: 21600
+  ## @param job.ttlSecondsAfterFinished Seconds a finished Job is kept
+  ##
+  ttlSecondsAfterFinished: 86400
+  ## @param job.successfulJobsHistoryLimit Successful Jobs kept by the CronJob
+  ##
+  successfulJobsHistoryLimit: 3
+  ## @param job.failedJobsHistoryLimit Failed Jobs kept by the CronJob
+  ##
+  failedJobsHistoryLimit: 1
+
+## @section Pod parameters
+
+## @param resources Container resource requests and limits
+##
+resources: {}
+## @param podLabels Extra labels for the Jobs and their pods
+##
+podLabels: {}
+## @param podAnnotations Annotations for the pods
+##
+podAnnotations: {}
+## @param commonLabels Labels added to every object
+##
+commonLabels: {}
+## @param imagePullSecrets Names of Secrets used to pull the image
+##
+imagePullSecrets: []
+## @param serviceAccountName ServiceAccount the pods run as (empty uses the namespace default)
+##
+serviceAccountName: ""
+## @param automountServiceAccountToken Mount the ServiceAccount token in the pods
+##
+automountServiceAccountToken: false
+## @param nodeSelector Node labels for pod assignment
+##
+nodeSelector: {}
+## @param tolerations Tolerations for pod assignment
+##
+tolerations: []
+## @param affinity Affinity for pod assignment. With fileStore enabled, the owner's podAffinity term is added to it
+##
+affinity: {}
+## @param podSecurityContext Pod security context
+##
+podSecurityContext: {}
+## @param securityContext Container security context
+##
+securityContext: {}
+## @param extraVolumes Extra volumes for the pods
+##
+extraVolumes: []
+## @param extraVolumeMounts Extra volume mounts for the container
+##
+extraVolumeMounts: []

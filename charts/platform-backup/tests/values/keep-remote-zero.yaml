@@ -1,0 +1,3 @@
+# A literal 0 read from a values file arrives as a float64, not an int.
+s3:
+  keepRemote: 0

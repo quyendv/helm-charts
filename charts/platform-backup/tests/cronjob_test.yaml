@@ -1,0 +1,341 @@
+suite: cronjob
+templates:
+  - templates/cronjob.yaml
+values:
+  - ./values/base.yaml
+tests:
+  - it: names the CronJob after the release fullname
+    asserts:
+      - isKind:
+          of: CronJob
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-platform-backup
+
+  # --- image -------------------------------------------------------------------
+  - it: defaults the image tag to the chart appVersion
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: ghcr.io/quyendv/platform-backup/postgresql:0.6.0
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+  - it: appends the variant to the tag
+    set:
+      image.variant: pg17
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: ghcr.io/quyendv/platform-backup/postgresql:0.6.0-pg17
+  - it: builds the image from engine, registry, tag and variant
+    set:
+      engine: redis
+      image: {registry: registry.example.com/mirror, tag: "0.5.1", variant: redis8}
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: registry.example.com/mirror/redis:0.5.1-redis8
+  - it: rejects an engine the project does not build
+    set:
+      engine: mysql
+    asserts:
+      - failedTemplate:
+          errorPattern: "/engine"
+
+  # --- required values ---------------------------------------------------------
+  - it: fails without a schedule
+    set:
+      schedule: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "schedule is required"
+  - it: fails without an S3 prefix
+    set:
+      s3.prefix: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "s3.prefix is required"
+  - it: fails without s3.keepRemote
+    set:
+      s3.keepRemote: null
+    asserts:
+      - failedTemplate:
+          errorPattern: "s3.keepRemote is required"
+  - it: rejects a negative s3.keepRemote
+    set:
+      s3.keepRemote: -1
+    asserts:
+      - failedTemplate:
+          errorPattern: "/s3/keepRemote"
+  - it: fails without a source for the S3 Secret
+    set:
+      s3.existingSecret: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "set s3.existingSecret or enable s3.externalSecret"
+
+  # --- name --------------------------------------------------------------------
+  - it: fails when the name does not contain "backup"
+    set:
+      fullnameOverride: app-postgresql-dump
+    asserts:
+      - failedTemplate:
+          errorPattern: 'must contain "backup"'
+  - it: accepts any name that contains "backup"
+    set:
+      fullnameOverride: app-postgresql-backup
+    asserts:
+      - equal:
+          path: metadata.name
+          value: app-postgresql-backup
+  - it: fails when the name is longer than a CronJob allows
+    set:
+      fullnameOverride: a-very-long-application-name-postgresql-backup-primary
+    asserts:
+      - failedTemplate:
+          errorPattern: "longer than the 52 characters"
+
+  # --- environment -------------------------------------------------------------
+  - it: renders the image's environment contract
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          value:
+            - {name: MODE, value: backup}
+            - {name: S3_PREFIX, value: backups/app}
+            - {name: KEEP_LOCAL, value: "1"}
+            - {name: KEEP_REMOTE, value: "30"}
+            - {name: VERIFY_READBACK, value: "false"}
+  - it: renders keepRemote 0 as "0", not as unset
+    set:
+      s3.keepRemote: 0
+      keepLocal: 0
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: KEEP_REMOTE, value: "0"}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: KEEP_LOCAL, value: "0"}
+  - it: renders keepRemote 0 from a values file as "0"
+    values:
+      - ./values/keep-remote-zero.yaml
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: KEEP_REMOTE, value: "0"}
+  - it: passes verifyReadback through
+    set:
+      verifyReadback: true
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: VERIFY_READBACK, value: "true"}
+  - it: sets BACKUP_HOST only when host is set
+    asserts:
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: BACKUP_HOST}
+          any: true
+  - it: sets BACKUP_HOST from host
+    set:
+      host: app-db
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: BACKUP_HOST, value: app-db}
+  - it: renders env sorted and as strings, then extraEnv
+    set:
+      env: {NOTIFY_ON: failure, POSTGRES_PORT: 5432, MIN_ARTIFACT_BYTES: 64}
+      extraEnv:
+        - name: POD_NAME
+          valueFrom: {fieldRef: {fieldPath: metadata.name}}
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          value:
+            - {name: MODE, value: backup}
+            - {name: S3_PREFIX, value: backups/app}
+            - {name: KEEP_LOCAL, value: "1"}
+            - {name: KEEP_REMOTE, value: "30"}
+            - {name: VERIFY_READBACK, value: "false"}
+            - {name: MIN_ARTIFACT_BYTES, value: "64"}
+            - {name: NOTIFY_ON, value: failure}
+            - {name: POSTGRES_PORT, value: "5432"}
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+  - it: refuses env that redefines a variable the chart sets
+    set:
+      env: {KEEP_REMOTE: "7"}
+    asserts:
+      - failedTemplate:
+          errorPattern: "KEEP_REMOTE is set by the chart"
+  - it: refuses extraEnv that redefines a variable the chart sets
+    set:
+      extraEnv: [{name: MODE, value: restore}]
+    asserts:
+      - failedTemplate:
+          errorPattern: "MODE is set by the chart"
+
+  # --- secrets -----------------------------------------------------------------
+  - it: loads only the S3 Secret when no target Secret is configured
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].envFrom
+          value:
+            - secretRef: {name: backup-s3}
+  - it: loads both existing Secrets
+    set:
+      target.existingSecret: app-db-credentials
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].envFrom
+          value:
+            - secretRef: {name: backup-s3}
+            - secretRef: {name: app-db-credentials}
+  - it: loads both ExternalSecret targets
+    set:
+      s3: {existingSecret: "", externalSecret: {enabled: true, secretStoreRef: {name: store}, remoteKey: secret/backup/s3}}
+      target.externalSecret: {enabled: true, secretStoreRef: {name: store}, dataFrom: [{extract: {key: secret/app/db}}]}
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].envFrom
+          value:
+            - secretRef: {name: RELEASE-NAME-platform-backup-s3}
+            - secretRef: {name: RELEASE-NAME-platform-backup-target}
+
+  # --- schedule and job --------------------------------------------------------
+  - it: renders the schedule and the job defaults
+    asserts:
+      - equal:
+          path: spec.schedule
+          value: "0 2 * * *"
+      - equal:
+          path: spec.timeZone
+          value: UTC
+      - equal:
+          path: spec.suspend
+          value: false
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+      - equal:
+          path: spec.successfulJobsHistoryLimit
+          value: 3
+      - equal:
+          path: spec.failedJobsHistoryLimit
+          value: 1
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 2
+      - equal:
+          path: spec.jobTemplate.spec.activeDeadlineSeconds
+          value: 21600
+      - equal:
+          path: spec.jobTemplate.spec.ttlSecondsAfterFinished
+          value: 86400
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.restartPolicy
+          value: Never
+  - it: honours a backoffLimit of 0
+    set:
+      job.backoffLimit: 0
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 0
+  - it: mounts a size-limited scratch emptyDir at /backup
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          value:
+            - name: backup
+              emptyDir: {sizeLimit: 10Gi}
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          value:
+            - {name: backup, mountPath: /backup}
+
+  # --- pod ---------------------------------------------------------------------
+  - it: runs one container named backup with no API token
+    asserts:
+      - lengthEqual:
+          path: spec.jobTemplate.spec.template.spec.containers
+          count: 1
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].name
+          value: backup
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.automountServiceAccountToken
+          value: false
+      - notExists:
+          path: spec.jobTemplate.spec.template.spec.affinity
+  - it: labels jobs and pods, keeping the standard labels authoritative
+    set:
+      commonLabels: {team: platform, app.kubernetes.io/instance: hijack}
+      podLabels: {tier: backup}
+      podAnnotations: {note: "1"}
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels
+          value:
+            app.kubernetes.io/name: platform-backup
+            app.kubernetes.io/instance: RELEASE-NAME
+            team: platform
+            tier: backup
+      - equal:
+          path: spec.jobTemplate.metadata.labels
+          value:
+            app.kubernetes.io/name: platform-backup
+            app.kubernetes.io/instance: RELEASE-NAME
+            team: platform
+            tier: backup
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.annotations
+          value: {note: "1"}
+      - equal:
+          path: metadata.labels.team
+          value: platform
+  - it: passes pod-level settings through
+    set:
+      serviceAccountName: backup
+      imagePullSecrets: [ghcr]
+      nodeSelector: {disk: ssd}
+      tolerations: [{key: dedicated, operator: Exists}]
+      affinity: {nodeAffinity: {requiredDuringSchedulingIgnoredDuringExecution: {nodeSelectorTerms: [{matchExpressions: [{key: zone, operator: In, values: [a]}]}]}}}
+      podSecurityContext: {runAsNonRoot: true}
+      securityContext: {allowPrivilegeEscalation: false}
+      resources: {limits: {memory: 1Gi}}
+      extraVolumes: [{name: ca, configMap: {name: ca}}]
+      extraVolumeMounts: [{name: ca, mountPath: /etc/ssl/custom}]
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.serviceAccountName
+          value: backup
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets
+          value: [{name: ghcr}]
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.nodeSelector
+          value: {disk: ssd}
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.tolerations
+          value: [{key: dedicated, operator: Exists}]
+      - exists:
+          path: spec.jobTemplate.spec.template.spec.affinity.nodeAffinity
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.securityContext
+          value: {runAsNonRoot: true}
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].securityContext
+          value: {allowPrivilegeEscalation: false}
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources
+          value: {limits: {memory: 1Gi}}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content: {name: ca, configMap: {name: ca}}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          content: {name: ca, mountPath: /etc/ssl/custom}

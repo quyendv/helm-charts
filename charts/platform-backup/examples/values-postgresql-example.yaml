@@ -1,0 +1,54 @@
+# Example: back up one PostgreSQL database every four hours, with credentials
+# from the External Secrets Operator.
+# Requires the External Secrets Operator and a ClusterSecretStore named below.
+#
+#   helm install app-postgresql-backup quyendv/platform-backup -f values-postgresql-example.yaml
+
+engine: postgresql
+image:
+  variant: pg17          # match the server's major version: pg14 .. pg17
+
+schedule: "0 */4 * * *"
+timeZone: UTC
+
+s3:
+  prefix: backups/app/postgresql
+  keepRemote: 42         # 42 runs x 4h = 7 days
+  externalSecret:
+    enabled: true
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: my-store
+    # The remote key holds AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+    # AWS_ENDPOINT_URL_S3, AWS_REGION and S3_BUCKET (e.g. my-bucket).
+    remoteKey: secret/backup/s3
+
+target:
+  externalSecret:
+    enabled: true
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: my-store
+    data:
+      - secretKey: POSTGRES_USER
+        remoteRef:
+          key: secret/app/postgresql
+          property: username
+      - secretKey: POSTGRES_PASSWORD
+        remoteRef:
+          key: secret/app/postgresql
+          property: password
+
+# Not secrets: the database coordinates stay in the values, in a reviewable diff.
+env:
+  POSTGRES_HOST: app-postgresql.app.svc.cluster.local
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: app
+  NOTIFY_ON: failure
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
