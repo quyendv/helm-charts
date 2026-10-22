@@ -46,12 +46,22 @@ jobs:
           GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
           CHANGED_CHARTS: ${{ steps.cr.outputs.changed_charts }}
         run: |
+          # changed_charts lists every chart touched since the last tag, not only the
+          # ones released now, and the releases are already public at this point:
+          # report problems as warnings rather than failing the rest of the job.
           for chart_dir in ${CHANGED_CHARTS//,/ }; do
+            [ -f "$chart_dir/Chart.yaml" ] || continue
             name="$(awk '/^name:/ {print $2; exit}' "$chart_dir/Chart.yaml")"
             version="$(awk '/^version:/ {print $2; exit}' "$chart_dir/Chart.yaml")"
-            ./scripts/release-notes.sh "$chart_dir" "$version" > "$RUNNER_TEMP/release-notes.md"
-            gh release edit "$name-$version" --notes-file "$RUNNER_TEMP/release-notes.md"
-            echo "Release notes published for $name-$version"
+            if ! ./scripts/release-notes.sh "$chart_dir" "$version" > "$RUNNER_TEMP/release-notes.md"; then
+              echo "::warning::No CHANGELOG section for $name $version; release notes left unchanged"
+              continue
+            fi
+            if gh release edit "$name-$version" --notes-file "$RUNNER_TEMP/release-notes.md"; then
+              echo "Release notes published for $name-$version"
+            else
+              echo "::warning::Could not update the release notes of $name-$version"
+            fi
           done
 
       - name: Deploy index.html to gh-pages

@@ -78,3 +78,49 @@ tests:
       - equal:
           path: spec.hostnames
           value: [www.example.com, app.example.com]
+  - it: ignores Service ports set to null
+    set:
+      service: {enabled: true, ports: {http: null, grpc: 9000}}
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: grpc
+  - it: accepts a named extraPorts entry as servicePort
+    set:
+      service:
+        enabled: true
+        extraPorts: [{name: web, port: 80, targetPort: web}]
+      ingress.servicePort: web
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: web
+  - it: does not resolve a port when only extraRules are rendered
+    set:
+      service: {enabled: true, ports: {grpc: 9000, admin: 9001}}
+      ingress:
+        hostname: ""
+        extraRules:
+          - host: custom.example.com
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend: {service: {name: other, port: {number: 80}}}
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: custom.example.com
+  - it: resolves the HTTPRoute port number past null entries
+    set:
+      ingress.enabled: false
+      service: {enabled: true, ports: {http: null, grpc: 9000}}
+      gatewayApi: {enabled: true, httpRoute: {parentRefs: [{name: gw}]}}
+    template: templates/httproute.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 9000

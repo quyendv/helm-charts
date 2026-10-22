@@ -1,5 +1,5 @@
 {{- if .Values.service.enabled }}
-{{- if and (not .Values.service.ports) (not .Values.service.extraPorts) }}
+{{- if and (not (include "generic-app.servicePorts" .)) (not .Values.service.extraPorts) }}
 {{- fail "service.enabled is true but service.ports is empty: declare the port(s) to expose, e.g. --set service.ports.http=8080" }}
 {{- end }}
 apiVersion: v1

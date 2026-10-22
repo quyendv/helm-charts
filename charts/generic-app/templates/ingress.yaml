@@ -8,7 +8,10 @@
 {{- if not (or .Values.ingress.hostname .Values.ingress.extraHosts .Values.ingress.extraRules) }}
 {{- fail "ingress.enabled is true but the Ingress has no rules: set ingress.hostname, ingress.extraHosts or ingress.extraRules" }}
 {{- end }}
-{{- $portName := include "generic-app.service.portName" (dict "port" .Values.ingress.servicePort "field" "ingress.servicePort" "context" $) }}
+{{- $portName := "" }}
+{{- if or .Values.ingress.hostname .Values.ingress.extraHosts }}
+{{- $portName = include "generic-app.service.portName" (dict "port" .Values.ingress.servicePort "field" "ingress.servicePort" "context" $) }}
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

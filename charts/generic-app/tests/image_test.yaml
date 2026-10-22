@@ -33,3 +33,10 @@ tests:
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].imagePullPolicy
+  - it: formats a whole-number tag from a values file exactly
+    values:
+      - ./values/numeric-tag.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: acme/api:20240101

@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **No default image.** The chart shipped `docker.io/nginx:1.25.3`, which no real release wants and which hid a missing `image.*` value behind a working-looking deploy. Rendering now fails with a clear message. `image.registry` and `image.pullPolicy` default to empty, leaving both to the Kubernetes defaults.
 - **No default Service port.** The `service.ports.http: 80` default merged into every user's map, so a chart that only wanted `grpc: 9000` also got `http: 80`, and the pod declared `containerPort: 80` even when the app listened elsewhere. `service.ports` and `service.nodePorts` are now empty, `service.enabled` defaults to `false`, and enabling the Service without a port fails. This follows bjw-s app-template, the most widely used generic chart; Bitnami charts can ship a default only because each one knows its application's port.
-- **Ingress, HTTPRoute and NOTES no longer assume a port named `http`.** They use `http`, else the only Service port, else the new `ingress.servicePort` / `gatewayApi.httpRoute.servicePort`; ambiguity is an error, not an empty `port:`. The Ingress backend references the port by name.
+- **Ingress, HTTPRoute and NOTES no longer assume a port named `http`.** Ingress and HTTPRoute route to the new `ingress.servicePort` / `gatewayApi.httpRoute.servicePort` when set, else to `http`, else to the only Service port (named `service.extraPorts` entries included, null entries ignored); ambiguity is an error, not an empty `port:`. The Ingress backend references the port by name. NOTES, being informational, shows `http` or else the first port by name.
 - **Ingress renders `networking.k8s.io/v1` only.** The pre-1.19 API branches are removed together with `ingress.apiVersion`. `ingress.hostname` defaults to `""` (was `app.local`) and `ingress.pathType` to `Prefix`, which every controller implements the same way.
 - **`serviceAccount.automountServiceAccountToken` defaults to `false`** and is also set on the pod spec, so it applies even when the pod uses an existing ServiceAccount. A mounted token is a credential most applications never need.
 - **The StatefulSet headless Service always exists** for `kind: StatefulSet`, independent of `service.enabled`, because `spec.serviceName` must point at a real Service. Its ports are the container ports.
@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`values.schema.json`**: unknown keys and invalid values fail at install time with the offending path, on Helm 3 and Helm 4. Chart-owned objects are closed; fields passed through to Kubernetes stay open.
+- **`values.schema.json`**: unknown keys and invalid values fail at install time with the offending path, on Helm 3 and Helm 4. Chart-owned objects are closed; fields passed through to Kubernetes stay open. Label and annotation values must be strings (an unquoted `8080` or `true` is caught here rather than by the API server). A root-level `enabled` key is allowed so parent charts can gate this one with `condition: <name>.enabled`.
 - **`extraValues`**: free-form values for your own templates.
 - **`image.digest`**: pin the image by digest, alone or together with a tag.
 - **`ingress.servicePort`** and **`gatewayApi.httpRoute.servicePort`**.
@@ -62,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **DaemonSet with `persistence.enabled` referenced a PVC that was never created**, leaving pods Pending. The chart now creates it for every kind except StatefulSet.
 - **PodDisruptionBudget was rejected when `maxUnavailable` was set**, because the `minAvailable: 1` default was rendered next to it. `maxUnavailable` now takes precedence, and `0` is accepted for both.
 - **ServiceMonitor scraped StatefulSet pods twice**: it selected the headless Service as well, which carries the same labels. The headless Service is now labelled `generic-app/headless: "true"` and excluded.
-- **`secrets.data` values that YAML parses as numbers or booleans** (`PORT: 5432`) failed to render.
+- **`secrets.data` values that YAML parses as numbers or booleans** (`PORT: 5432`) failed to render. Large numbers are stored as written (`123456789012`, not `1.23456789012e+11`).
+- **An unquoted numeric `image.tag` in a values file** (`tag: 20240101`) rendered as `2.0240101e+07`. Whole numbers are now formatted exactly; a decimal such as `1.10` is rejected by the schema, since it has already become `1.1` when parsed and must be quoted.
 - **The HTTP → HTTPS redirect route skipped `gatewayApi.hostname`** whenever `gatewayApi.httpRoute.hostnames` was also set. Route, redirect and Certificate now share one hostname list.
 - `terminationGracePeriodSeconds: 0` was ignored.
 - The StatefulSet now honours `minReadySeconds`, and `persistentVolumeClaimRetentionPolicy` also applies when only `extraVolumeClaimTemplates` are used.

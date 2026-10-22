@@ -49,7 +49,7 @@ The chart has no default image and exposes no port by default: `image.repository
 helm install my-app quyendv/generic-app -f my-values.yaml
 
 # Install specific version
-helm install my-app quyendv/generic-app --version 2.0.0
+helm install my-app quyendv/generic-app --version 2.0.0 -f my-values.yaml
 
 # Install with inline values: an nginx container behind a ClusterIP Service on port 80
 helm install my-app quyendv/generic-app \
@@ -77,9 +77,10 @@ helm install my-app quyendv/generic-app \
     admin: 9000       # reachable on the pod only
   ```
 
-- Ingress and Gateway API route to the `http` port, or to the only port when there is one.
-  With several ports and none named `http`, name the one to use in `ingress.servicePort` /
-  `gatewayApi.httpRoute.servicePort`.
+- Ingress and Gateway API route to the port named in `ingress.servicePort` /
+  `gatewayApi.httpRoute.servicePort` when set, else to the `http` port, else to the only port.
+  Several ports with none named `http` and no `servicePort` is an error. Named
+  `service.extraPorts` entries count as Service ports too.
 - A worker with no Service needs no port configuration at all.
 
 
@@ -205,7 +206,7 @@ Data is kept by default in both runtimes, but the mechanism differs.
 
 | Name                               | Description                                                                                                | Value       |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------- |
-| `service.enabled`                  | Enable service creation (requires at least one entry in service.ports)                                     | `false`     |
+| `service.enabled`                  | Enable service creation (requires at least one port in service.ports or service.extraPorts)                | `false`     |
 | `service.type`                     | Service type                                                                                               | `ClusterIP` |
 | `service.ports`                    | Service ports map (name -> port). Each name is also the targetPort, so it must match a container port name | `{}`        |
 | `service.nodePorts`                | Node ports by service.ports name, for NodePort/LoadBalancer services (30000-32767)                         | `{}`        |

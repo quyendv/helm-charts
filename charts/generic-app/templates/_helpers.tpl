@@ -135,7 +135,12 @@ The chart ships no default image, so repository and one of tag/digest are requir
     {{- $registry = .Values.global.imageRegistry -}}
   {{- end -}}
   {{- $repository := required "image.repository is required: this chart has no default image" .Values.image.repository -}}
-  {{- $tag := default "" .Values.image.tag | toString -}}
+  {{- $tag := default "" .Values.image.tag -}}
+  {{- if kindIs "float64" $tag -}}
+    {{- /* A whole number from a values file (tag: 20240101) is parsed as a float; toString would give 2.0240101e+07. */}}
+    {{- $tag = printf "%.0f" $tag -}}
+  {{- end -}}
+  {{- $tag = toString $tag -}}
   {{- $digest := default "" .Values.image.digest -}}
   {{- if and (not $tag) (not $digest) -}}
     {{- fail "image.tag or image.digest is required (an untagged image silently means :latest)" -}}
@@ -204,16 +209,38 @@ Usage: {{- $ports := include "generic-app.containerPorts" . | fromYaml }}
 {{- end -}}
 
 {{/*
-Name of the service.ports entry that Ingress, HTTPRoute and NOTES route to.
+Ports of the chart Service as a YAML name -> number map: service.ports without
+null entries, plus the named service.extraPorts entries.
+Usage: {{- $ports := include "generic-app.servicePorts" . | fromYaml }}
+*/}}
+{{- define "generic-app.servicePorts" -}}
+  {{- $out := dict -}}
+  {{- range $name, $port := .Values.service.ports | default dict -}}
+    {{- if not (kindIs "invalid" $port) -}}
+      {{- $_ := set $out $name $port -}}
+    {{- end -}}
+  {{- end -}}
+  {{- range .Values.service.extraPorts | default list -}}
+    {{- if and (kindIs "map" .) .name .port -}}
+      {{- $_ := set $out (toString .name) .port -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $out -}}
+    {{- toYaml $out -}}
+  {{- end -}}
+{{- end -}}
+
+{{/*
+Name of the Service port that Ingress, HTTPRoute and NOTES route to.
 Resolution: the explicit name -> "http" -> the only port -> fail.
 Usage: {{ include "generic-app.service.portName" (dict "port" .Values.ingress.servicePort "field" "ingress.servicePort" "context" $) }}
 */}}
 {{- define "generic-app.service.portName" -}}
-  {{- $ports := .context.Values.service.ports | default dict -}}
+  {{- $ports := include "generic-app.servicePorts" .context | fromYaml -}}
   {{- $want := default "" .port | toString -}}
   {{- if $want -}}
     {{- if not (hasKey $ports $want) -}}
-      {{- fail (printf "%s is %q, which is not a key of service.ports" .field $want) -}}
+      {{- fail (printf "%s is %q, which is not a port of the Service (service.ports / service.extraPorts)" .field $want) -}}
     {{- end -}}
     {{- $want -}}
   {{- else if hasKey $ports "http" -}}
@@ -221,9 +248,9 @@ Usage: {{ include "generic-app.service.portName" (dict "port" .Values.ingress.se
   {{- else if eq (len $ports) 1 -}}
     {{- keys $ports | first -}}
   {{- else if eq (len $ports) 0 -}}
-    {{- fail (printf "%s cannot be resolved: service.ports is empty" .field) -}}
+    {{- fail (printf "%s cannot be resolved: the Service has no ports" .field) -}}
   {{- else -}}
-    {{- fail (printf "%s is required: service.ports has no \"http\" entry and %d ports to choose from (%s)" .field (len $ports) (keys $ports | sortAlpha | join ", ")) -}}
+    {{- fail (printf "%s is required: the Service has no \"http\" port and %d ports to choose from (%s)" .field (len $ports) (keys $ports | sortAlpha | join ", ")) -}}
   {{- end -}}
 {{- end -}}
 
@@ -478,7 +505,7 @@ Warn when a ReadWriteOnce volume is shared by pods that may run on different nod
 {{- define "generic-app.checkSharedRwoVolume" -}}
   {{- if and .Values.persistence.enabled (ne .Values.kind "StatefulSet") (has "ReadWriteOnce" .Values.persistence.accessModes) -}}
     {{- $multi := or .Values.autoscaling.enabled (gt (int .Values.replicaCount) 1) (eq .Values.kind "DaemonSet") -}}
-    {{- $rolling := and (eq .Values.kind "Deployment") (eq (default "RollingUpdate" .Values.updateStrategy.type) "RollingUpdate") -}}
+    {{- $rolling := and (eq .Values.kind "Deployment") (eq (default "RollingUpdate" (.Values.updateStrategy | default dict).type) "RollingUpdate") -}}
     {{- if or $multi $rolling }}
 WARNING: persistence uses a ReadWriteOnce claim shared by {{ ternary "several pods" "old and new pods during a rolling update" $multi }}. Pods scheduled on another node cannot attach it and stay Pending. Use kind=StatefulSet, a ReadWriteMany storage class, or updateStrategy.type=Recreate with a single replica.
     {{- end -}}

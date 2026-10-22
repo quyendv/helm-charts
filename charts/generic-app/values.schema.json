@@ -76,7 +76,7 @@
           "description": "Application image tag (immutable tags are recommended)",
           "type": [
             "string",
-            "number"
+            "integer"
           ]
         },
         "digest": {
@@ -206,8 +206,8 @@
             "oneOf": [
               {
                 "type": "integer",
-                "minimum": 30000,
-                "maximum": 32767
+                "minimum": 1,
+                "maximum": 65535
               },
               {
                 "enum": [
@@ -237,7 +237,10 @@
           ]
         },
         "annotations": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "extraPorts": {
           "type": [
@@ -371,7 +374,10 @@
           "type": "string"
         },
         "annotations": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "tls": {
           "type": "boolean"
@@ -442,7 +448,10 @@
               "type": "string"
             },
             "annotations": {
-              "type": "object"
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
             },
             "labels": {
               "type": "object",
@@ -518,7 +527,10 @@
               "type": "string"
             },
             "annotations": {
-              "type": "object"
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
             },
             "labels": {
               "type": "object",
@@ -579,7 +591,10 @@
               "type": "string"
             },
             "annotations": {
-              "type": "object"
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
             },
             "secretName": {
               "type": "string"
@@ -703,19 +718,31 @@
     },
     "customLivenessProbe": {
       "description": "Custom livenessProbe that overrides the default one",
-      "type": "object"
+      "type": [
+        "object",
+        "string"
+      ]
     },
     "customReadinessProbe": {
       "description": "Custom readinessProbe that overrides the default one",
-      "type": "object"
+      "type": [
+        "object",
+        "string"
+      ]
     },
     "customStartupProbe": {
       "description": "Custom startupProbe that overrides the default one",
-      "type": "object"
+      "type": [
+        "object",
+        "string"
+      ]
     },
     "lifecycleHooks": {
       "description": "for the container(s) to automate configuration before or after startup",
-      "type": "object"
+      "type": [
+        "object",
+        "string"
+      ]
     },
     "persistence": {
       "type": "object",
@@ -834,7 +861,10 @@
           "type": "object"
         },
         "annotations": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -856,7 +886,10 @@
           }
         },
         "annotations": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -931,10 +964,16 @@
           ]
         },
         "annotations": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "labels": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -949,7 +988,10 @@
           "type": "string"
         },
         "annotations": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "automountServiceAccountToken": {
           "type": "boolean"
@@ -1075,7 +1117,10 @@
           }
         },
         "annotations": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "honorLabels": {
           "type": "boolean"
@@ -1100,11 +1145,17 @@
     },
     "podLabels": {
       "description": "Extra labels for pods",
-      "type": "object"
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "podAnnotations": {
       "description": "Annotations for pods",
-      "type": "object"
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "podAffinityPreset": {
       "description": "Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`",
@@ -1146,7 +1197,10 @@
     },
     "affinity": {
       "description": "Affinity for pods assignment",
-      "type": "object"
+      "type": [
+        "object",
+        "string"
+      ]
     },
     "nodeSelector": {
       "description": "Node labels for pods assignment",
@@ -1219,6 +1273,10 @@
     },
     "extraValues": {
       "type": "object"
+    },
+    "enabled": {
+      "description": "Read by a parent chart's dependency condition; ignored by this chart",
+      "type": "boolean"
     }
   }
 }

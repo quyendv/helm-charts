@@ -23,9 +23,11 @@ Traffic depends on your Gateway status and listener configuration (not shown by 
 {{- if .Values.gatewayApi.certificate.enabled }}
 cert-manager Certificate is enabled; ensure the Gateway listener references spec.secretName from the Certificate (or your platform TLS pattern).
 {{- end }}
-{{- else if and .Values.service.enabled .Values.service.ports }}
-{{- $portName := ternary "http" (keys .Values.service.ports | sortAlpha | first) (hasKey .Values.service.ports "http") }}
-{{- $port := index .Values.service.ports $portName }}
+{{- else if and .Values.service.enabled (include "generic-app.servicePorts" .) }}
+{{- $ports := include "generic-app.servicePorts" . | fromYaml }}
+{{- /* Informational only, so never fail here: prefer "http", else the first port by name. */}}
+{{- $portName := ternary "http" (keys $ports | sortAlpha | first) (hasKey $ports "http") }}
+{{- $port := index $ports $portName }}
 
 Your application has been deployed successfully!
 

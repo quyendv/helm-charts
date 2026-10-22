@@ -21,9 +21,12 @@ tests:
           path: spec.minAvailable
   - it: encodes non-string secret values
     set:
-      secrets: {enabled: true, data: {PORT: 5432, DEBUG: true}}
+      secrets: {enabled: true, data: {PORT: 5432, DEBUG: true, ACCOUNT_ID: 123456789012}}
     template: templates/secret.yaml
     asserts:
+      - equal:
+          path: data.ACCOUNT_ID
+          value: MTIzNDU2Nzg5MDEy
       - equal:
           path: data.PORT
           value: NTQzMg==

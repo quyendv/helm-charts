@@ -196,15 +196,15 @@ podSecurityContext:
 ## Service configuration
 ##
 service:
-  ## @param service.enabled Enable service creation (requires at least one entry in service.ports)
+  ## @param service.enabled Enable service creation (requires at least one port in service.ports or service.extraPorts)
   ##
   enabled: false
   ## @param service.type Service type
   ##
   type: ClusterIP
   ## @param service.ports Service ports map (name -> port). Each name is also the targetPort, so it must match a container port name
-  ## Nothing is exposed by default. Ingress and Gateway API route to the "http" entry, or to the
-  ## only entry when there is one (override with ingress.servicePort / gatewayApi.httpRoute.servicePort).
+  ## Nothing is exposed by default. Ingress and Gateway API route to ingress.servicePort /
+  ## gatewayApi.httpRoute.servicePort when set, else to the "http" entry, else to the only entry.
   ## e.g:
   ## ports:
   ##   http: 80        # with containerPorts.http: 8080, clients use :80 and the pod listens on :8080

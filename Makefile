@@ -5,6 +5,11 @@
 # readme-generator-for-helm. The root README "Available Charts" table is
 # generated from each Chart.yaml. Edit values.yaml/Chart.yaml, then `make docs`.
 
+# pipefail: a `helm template | kubeconform` pipeline must fail when helm fails,
+# not report "0 resources, 0 errors".
+SHELL := bash
+.SHELLFLAGS := -eo pipefail -c
+
 CHARTS := $(wildcard charts/*)
 README_GENERATOR := npx --yes @bitnami/readme-generator-for-helm@2.7.2
 KUBE_VERSION ?= 1.30.0
