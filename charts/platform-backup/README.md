@@ -162,12 +162,12 @@ several times under different aliases:
 dependencies:
   - name: platform-backup
     alias: app-postgresql-backup
-    version: 0.1.0
+    version: 0.1.1
     repository: https://quyendv.github.io/helm-charts
     condition: app-postgresql-backup.enabled
   - name: platform-backup
     alias: app-redis-backup
-    version: 0.1.0
+    version: 0.1.1
     repository: https://quyendv.github.io/helm-charts
     condition: app-redis-backup.enabled
 ```
