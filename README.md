@@ -54,7 +54,7 @@ Run `make help` to list available tasks.
 ### Documentation model
 
 - **Per-chart docs live in the chart directory** (`charts/<name>/README.md`). Parameter tables there are generated from the `## @param` annotations in `values.yaml` via [readme-generator-for-helm](https://github.com/bitnami/readme-generator-for-helm).
-- **This root README** is just an index. Its chart table is generated from `Chart.yaml`, and `index.html` (the GitHub Pages landing page) reads the live version from the published `index.yaml`. So versions and the chart list stay in sync automatically — edit `values.yaml`/`Chart.yaml`, then run `make docs`.
+- **This root README** is just an index. Its chart table is generated from `Chart.yaml`, and `index.html` (the GitHub Pages landing page) renders every chart, its latest version, description and keywords from the published `index.yaml`. So versions and the chart list stay in sync automatically — edit `values.yaml`/`Chart.yaml`, then run `make docs`. The static chart list in `index.html` is only a fallback for when `index.yaml` cannot be read.
 
 ## Contributing
 
@@ -76,7 +76,7 @@ Run `make help` to list available tasks.
 
 ## Automated releases
 
-Merging to `main` (when `charts/**` changes) triggers [chart-releaser-action](https://github.com/helm/chart-releaser-action). It packages each chart, creates a GitHub release and the `<chart>-<version>` tag for every new chart version, updates the Helm repository `index.yaml`, and deploys `index.html` to GitHub Pages. Existing versions are skipped (`skip_existing`), so the `version` in `Chart.yaml` is what triggers a release; do not create tags by hand.
+Merging to `main` (when `charts/**` or `index.html` changes) triggers [chart-releaser-action](https://github.com/helm/chart-releaser-action). It packages each chart, creates a GitHub release and the `<chart>-<version>` tag for every new chart version, updates the Helm repository `index.yaml`, and deploys `index.html` to GitHub Pages. Existing versions are skipped (`skip_existing`), so the `version` in `Chart.yaml` is what triggers a release; do not create tags by hand.
 
 The release body is that version's section of the chart's `CHANGELOG.md` (see `scripts/release-notes.sh`), followed by install instructions and a link to the diff against the previous release. `scripts/backfill-release-notes.sh` applies the same format to existing releases.
 
