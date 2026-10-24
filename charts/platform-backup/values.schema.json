@@ -18,7 +18,8 @@
         "postgresql",
         "mongodb",
         "redis",
-        "sqlite"
+        "sqlite",
+        "files"
       ]
     },
     "image": {
@@ -391,6 +392,45 @@
     "extraVolumeMounts": {
       "description": "Extra volume mounts for the container",
       "type": "array"
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The selection for engine files",
+      "properties": {
+        "subPath": {
+          "type": "string",
+          "description": "Directory under fileStore.mountPath to back up"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "FILES_INCLUDE entries"
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "FILES_EXCLUDE patterns"
+        },
+        "require": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "FILES_REQUIRE paths"
+        },
+        "forbid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "FILES_FORBID patterns"
+        }
+      }
     }
   }
 }

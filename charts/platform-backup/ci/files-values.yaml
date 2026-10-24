@@ -1,0 +1,26 @@
+# files: a directory on the application's volume, mounted read-only.
+fullnameOverride: app-files-backup
+engine: files
+schedule: "0 2 * * *"
+s3:
+  prefix: backups/app/files
+  keepRemote: 15
+  existingSecret: backup-s3
+fileStore:
+  enabled: true
+  claimName: app-data
+  readOnly: true
+  ownerSelector:
+    app.kubernetes.io/instance: app
+files:
+  include: ["*.xml", "jobs", "?users"]
+  exclude: ["secrets/master.key", "jobs/*/builds"]
+  require: [config.xml]
+  forbid: [secrets/master.key]
+# Root, able to read every file and nothing more.
+securityContext:
+  runAsUser: 0
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+    add: [DAC_READ_SEARCH]

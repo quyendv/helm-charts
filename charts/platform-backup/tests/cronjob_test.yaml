@@ -17,7 +17,7 @@ tests:
     asserts:
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
-          value: ghcr.io/quyendv/platform-backup/postgresql:0.6.3
+          value: ghcr.io/quyendv/platform-backup/postgresql:0.7.0
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].imagePullPolicy
           value: IfNotPresent
@@ -27,7 +27,7 @@ tests:
     asserts:
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
-          value: ghcr.io/quyendv/platform-backup/postgresql:0.6.3-pg17
+          value: ghcr.io/quyendv/platform-backup/postgresql:0.7.0-pg17
   - it: builds the image from engine, registry, tag and variant
     set:
       engine: redis

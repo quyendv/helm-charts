@@ -5,6 +5,24 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-10-24
+
+### Added
+
+- `engine: files`: back up a directory on the application's volume with the
+  platform-backup files image. `files.include`, `files.exclude`, `files.require`
+  and `files.forbid` become `FILES_INCLUDE`, `FILES_EXCLUDE`, `FILES_REQUIRE` and
+  `FILES_FORBID`, one entry per line; `FILES_ROOT` is `fileStore.mountPath` plus
+  `files.subPath`. The engine requires `fileStore`, and the chart refuses
+  `FILES_*` in `env`/`extraEnv`. Example: `examples/values-files-example.yaml`.
+
+### Changed
+
+- `appVersion` is 0.7.0, so the image tag defaults to platform-backup 0.7.0:
+  every image rebuilt on current bases and tools, with no fixable HIGH or
+  CRITICAL CVE left outside MongoDB's own tool binaries. Releases that set
+  `image.tag` are unaffected.
+
 ## [0.1.1] - 2026-10-22
 
 ### Changed

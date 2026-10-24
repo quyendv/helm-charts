@@ -6,7 +6,7 @@
 
 ## @section Backup parameters
 
-## @param engine Data store to back up: postgresql, mongodb, redis or sqlite. Selects the image
+## @param engine Data store to back up: postgresql, mongodb, redis, sqlite or files (a directory). Selects the image
 ##
 engine: postgresql
 
@@ -158,6 +158,30 @@ fileStore:
   ## @param fileStore.ownerSelector [object] matchLabels of the pod that owns the claim (required when enabled)
   ##
   ownerSelector: {}
+
+## @section files engine parameters
+
+## The selection for engine files: each list becomes one FILES_* variable, one
+## entry per line (see the files backend's README for the matching rules).
+## FILES_ROOT is fileStore.mountPath plus files.subPath; fileStore is required.
+##
+files:
+  ## @param files.subPath Directory under fileStore.mountPath to back up; empty backs up the whole mount
+  ##
+  subPath: ""
+  ## @param files.include [array] Paths or globs to take (FILES_INCLUDE); each must match unless written with a leading ?
+  ##
+  include:
+    - "."
+  ## @param files.exclude [array] GNU tar --exclude patterns (FILES_EXCLUDE)
+  ##
+  exclude: []
+  ## @param files.require [array] Paths every archive must hold (FILES_REQUIRE)
+  ##
+  require: []
+  ## @param files.forbid [array] Patterns no archived path may match (FILES_FORBID)
+  ##
+  forbid: []
 
 ## @section Job parameters
 
