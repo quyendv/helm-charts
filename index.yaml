@@ -444,6 +444,34 @@ entries:
     version: 1.0.0
   platform-backup:
   - apiVersion: v2
+    appVersion: 0.7.0
+    created: "2026-10-24T02:47:00.683716371Z"
+    description: A scheduled backup of one PostgreSQL, MongoDB, Redis or SQLite store,
+      or a directory, to S3-compatible storage
+    digest: f7d5413bf01a74dd5ab2916e82eb46f890d4d438b7f79d5a519f20d597af737c
+    home: https://github.com/quyendv/helm-charts
+    icon: https://raw.githubusercontent.com/quyendv/helm-charts/main/images/icon.svg
+    keywords:
+    - backup
+    - cronjob
+    - postgresql
+    - mongodb
+    - redis
+    - sqlite
+    - files
+    - s3
+    maintainers:
+    - name: quyendv
+      url: https://github.com/quyendv
+    name: platform-backup
+    sources:
+    - https://github.com/quyendv/helm-charts
+    - https://github.com/quyendv/platform-backup
+    type: application
+    urls:
+    - https://github.com/quyendv/helm-charts/releases/download/platform-backup-0.2.0/platform-backup-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
     appVersion: 0.6.3
     created: "2026-10-22T13:41:49.633242702Z"
     description: A scheduled backup of one PostgreSQL, MongoDB, Redis or SQLite store
@@ -497,4 +525,4 @@ entries:
     urls:
     - https://github.com/quyendv/helm-charts/releases/download/platform-backup-0.1.0/platform-backup-0.1.0.tgz
     version: 0.1.0
-generated: "2026-10-22T13:41:49.633296313Z"
+generated: "2026-10-24T02:47:00.683774187Z"
