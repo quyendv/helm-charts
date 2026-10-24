@@ -56,10 +56,11 @@ defaults to the chart's `appVersion`. Pick the variant that matches the server:
 
 | `engine`     | `image.variant`             | Example image                                            |
 | ------------ | --------------------------- | -------------------------------------------------------- |
-| `postgresql` | `pg14`, `pg15`, `pg16`, `pg17` | `ghcr.io/quyendv/platform-backup/postgresql:0.6.3-pg17` |
-| `mongodb`    | *(empty)*                   | `ghcr.io/quyendv/platform-backup/mongodb:0.6.3`          |
-| `redis`      | `redis7`, `redis8`          | `ghcr.io/quyendv/platform-backup/redis:0.6.3-redis8`     |
-| `sqlite`     | *(empty)*                   | `ghcr.io/quyendv/platform-backup/sqlite:0.6.3`           |
+| `postgresql` | `pg14`, `pg15`, `pg16`, `pg17` | `ghcr.io/quyendv/platform-backup/postgresql:0.7.0-pg17` |
+| `mongodb`    | *(empty)*                   | `ghcr.io/quyendv/platform-backup/mongodb:0.7.0`          |
+| `redis`      | `redis7`, `redis8`          | `ghcr.io/quyendv/platform-backup/redis:0.7.0-redis8`     |
+| `sqlite`     | *(empty)*                   | `ghcr.io/quyendv/platform-backup/sqlite:0.7.0`           |
+| `files`      | *(empty)*                   | `ghcr.io/quyendv/platform-backup/files:0.7.0`            |
 
 ### Environment
 
@@ -73,12 +74,21 @@ The chart sets these variables and refuses `env` or `extraEnv` entries that repe
 | `KEEP_REMOTE`     | `s3.keepRemote`                       |
 | `VERIFY_READBACK` | `verifyReadback`                      |
 | `BACKUP_HOST`     | `host`, only when set                 |
+| `FILES_ROOT`      | engine `files`: `fileStore.mountPath` + `files.subPath` |
+| `FILES_INCLUDE`, `FILES_EXCLUDE`, `FILES_REQUIRE`, `FILES_FORBID` | engine `files`: `files.include`, `files.exclude`, `files.require`, `files.forbid`, one entry per line, each only when non-empty |
 
 Everything else the image reads goes in `env` (a sorted `name: value` map) or `extraEnv`
 (full `EnvVar` entries): the store's coordinates (`POSTGRES_HOST`, `POSTGRES_DB`,
 `SQLITE_PATH`, ...), `NOTIFY_*`, `MIN_ARTIFACT_BYTES`. Credentials belong in the target
 Secret. See each backend's README in the platform-backup repository for its variables.
 `VERIFY_READBACK` and `BACKUP_HOST` need image 0.6.0 or later; older images ignore them.
+
+**Engine `files`** backs up a directory on the application's volume: it needs
+`fileStore` (mount it with `readOnly: true`; a backup never writes) and runs best as root
+with only `DAC_READ_SEARCH`, as
+[examples/values-files-example.yaml](examples/values-files-example.yaml) does. The
+selection rules, and a tested Jenkins selection with a restore drill, are in the files
+backend's README in the platform-backup repository. Requires image 0.7.0 or later.
 
 **Retention is a count of runs, not days.** `s3.keepRemote: 0` disables pruning: it keeps
 every run, it never means "keep none". The retention window is `keepRemote` × the schedule
@@ -178,7 +188,7 @@ dependencies:
 
 | Name                | Description                                                                                                                                                                 | Value                             |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `engine`            | Data store to back up: postgresql, mongodb, redis or sqlite. Selects the image                                                                                              | `postgresql`                      |
+| `engine`            | Data store to back up: postgresql, mongodb, redis, sqlite or files (a directory). Selects the image                                                                         | `postgresql`                      |
 | `image.registry`    | Registry and path the per-engine images live under                                                                                                                          | `ghcr.io/quyendv/platform-backup` |
 | `image.tag`         | Image release tag (empty uses the chart appVersion)                                                                                                                         | `""`                              |
 | `image.variant`     | Image variant appended to the tag: pg14..pg17 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite                                                         | `""`                              |
@@ -231,6 +241,16 @@ dependencies:
 | `fileStore.mountPath`     | Where the claim is mounted in the container                                                          | `/data` |
 | `fileStore.readOnly`      | Mount the claim read-only. Leave false for sqlite, which must take part in the application's locking | `false` |
 | `fileStore.ownerSelector` | matchLabels of the pod that owns the claim (required when enabled)                                   | `{}`    |
+
+### files engine parameters
+
+| Name            | Description                                                                             | Value |
+| --------------- | --------------------------------------------------------------------------------------- | ----- |
+| `files.subPath` | Directory under fileStore.mountPath to back up; empty backs up the whole mount          | `""`  |
+| `files.include` | Paths or globs to take (FILES_INCLUDE); each must match unless written with a leading ? | `[]`  |
+| `files.exclude` | GNU tar --exclude patterns (FILES_EXCLUDE)                                              | `[]`  |
+| `files.require` | Paths every archive must hold (FILES_REQUIRE)                                           | `[]`  |
+| `files.forbid`  | Patterns no archived path may match (FILES_FORBID)                                      | `[]`  |
 
 ### Job parameters
 

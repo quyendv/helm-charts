@@ -1,0 +1,80 @@
+suite: files engine
+templates:
+  - templates/cronjob.yaml
+set:
+  engine: files
+  schedule: "0 2 * * *"
+  s3: {prefix: backups/app/files, keepRemote: 15, existingSecret: backup-s3}
+  fileStore:
+    enabled: true
+    claimName: app-data
+    readOnly: true
+    ownerSelector: {app.kubernetes.io/instance: app}
+  files:
+    include: ["*.xml", "jobs", "?users"]
+    exclude: ["secrets/master.key", "jobs/*/builds"]
+    require: [config.xml]
+    forbid: [secrets/master.key]
+tests:
+  - it: runs the files image
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: ghcr.io/quyendv/platform-backup/files:0.7.0
+  - it: points FILES_ROOT at the mounted claim and passes the selection one entry per line
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_ROOT, value: /data}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_INCLUDE, value: "*.xml\njobs\n?users"}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_EXCLUDE, value: "secrets/master.key\njobs/*/builds"}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_REQUIRE, value: config.xml}
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_FORBID, value: secrets/master.key}
+  - it: appends files.subPath to the mount path
+    set:
+      fileStore.mountPath: /var/lib/app
+      files.subPath: home
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_ROOT, value: /var/lib/app/home}
+  - it: leaves out the selection variables that are empty
+    set:
+      files: {include: [], exclude: [], require: [], forbid: []}
+    asserts:
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_EXCLUDE, value: ""}
+          any: true
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_ROOT, value: /data}
+  - it: sets no FILES_ variable for another engine
+    set:
+      engine: sqlite
+      env: {SQLITE_PATH: /data/app.db}
+    asserts:
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content: {name: FILES_ROOT}
+          any: true
+  - it: refuses the files engine without a file store
+    set:
+      fileStore.enabled: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "engine files needs fileStore"
+  - it: refuses FILES_ variables in env, which the chart sets
+    set:
+      env: {FILES_INCLUDE: "x"}
+    asserts:
+      - failedTemplate:
+          errorPattern: "FILES_INCLUDE is set by the chart"

@@ -135,6 +135,16 @@ Environment variables the chart sets itself; env and extraEnv may not repeat the
 - name: BACKUP_HOST
   value: {{ .Values.host | quote }}
 {{- end }}
+{{- if eq .Values.engine "files" }}
+- name: FILES_ROOT
+  value: {{ include "platform-backup.filesRoot" . | quote }}
+{{- range $name, $list := dict "FILES_INCLUDE" .Values.files.include "FILES_EXCLUDE" .Values.files.exclude "FILES_REQUIRE" .Values.files.require "FILES_FORBID" .Values.files.forbid }}
+{{- if $list }}
+- name: {{ $name }}
+  value: {{ join "\n" $list | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*
@@ -185,6 +195,17 @@ Included by cronjob.yaml, which every release renders. Only there: Helm stops at
 the first failing template, so checks spread over several would be reported
 against whichever template happened to render first.
 */}}
+{{/*
+FILES_ROOT for engine files: the claim's mount path, plus files.subPath.
+*/}}
+{{- define "platform-backup.filesRoot" -}}
+  {{- $root := .Values.fileStore.mountPath | trimSuffix "/" -}}
+  {{- with .Values.files.subPath -}}
+    {{- $root = printf "%s/%s" $root (trimPrefix "/" .) -}}
+  {{- end -}}
+  {{- $root -}}
+{{- end -}}
+
 {{- define "platform-backup.validate" -}}
   {{- $fullname := include "platform-backup.fullname" . -}}
   {{- if not (contains "backup" $fullname) -}}
@@ -244,14 +265,21 @@ against whichever template happened to render first.
     {{- end -}}
   {{- end -}}
 
+  {{- if and (eq .Values.engine "files") (not .Values.fileStore.enabled) -}}
+    {{- fail "engine files needs fileStore: enable it with the claim that holds the directory (fileStore.claimName, fileStore.ownerSelector)" -}}
+  {{- end -}}
+
   {{- $managed := list "MODE" "S3_PREFIX" "KEEP_LOCAL" "KEEP_REMOTE" "VERIFY_READBACK" "BACKUP_HOST" -}}
+  {{- if eq .Values.engine "files" -}}
+    {{- $managed = concat $managed (list "FILES_ROOT" "FILES_INCLUDE" "FILES_EXCLUDE" "FILES_REQUIRE" "FILES_FORBID") -}}
+  {{- end -}}
   {{- $names := keys (.Values.env | default dict) -}}
   {{- range (.Values.extraEnv | default list) -}}
     {{- $names = append $names .name -}}
   {{- end -}}
   {{- range $names -}}
     {{- if has . $managed -}}
-      {{- fail (printf "%s is set by the chart; remove it from env/extraEnv and use the matching value (s3.prefix, keepLocal, s3.keepRemote, verifyReadback, host)" .) -}}
+      {{- fail (printf "%s is set by the chart; remove it from env/extraEnv and use the matching value (s3.prefix, keepLocal, s3.keepRemote, verifyReadback, host, files.*)" .) -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}

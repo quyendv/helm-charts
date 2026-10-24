@@ -1,0 +1,63 @@
+# Example: back up the configuration directory of an application whose state
+# is files, not a database: here a Jenkins home on a ReadWriteOnce volume. The
+# job mounts that claim read-only, on the node of the pod that owns it.
+# The selection is the one the files backend's Jenkins example explains:
+# https://github.com/quyendv/platform-backup/tree/main/backends/files/examples/jenkins
+#
+#   helm install jenkins-files-backup quyendv/platform-backup -f values-files-example.yaml
+
+engine: files
+schedule: "0 2 * * *"
+
+s3:
+  prefix: backups/jenkins/files
+  keepRemote: 15
+  # An existing Secret with AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+  # AWS_ENDPOINT_URL_S3, AWS_REGION and S3_BUCKET.
+  existingSecret: backup-s3
+
+fileStore:
+  enabled: true
+  claimName: jenkins-home              # the application's PVC
+  mountPath: /data
+  readOnly: true                       # a backup never writes to it
+  ownerSelector:                       # labels of the pod that mounts it
+    app.kubernetes.io/instance: jenkins
+
+files:
+  include:
+    - "*.xml"
+    - secrets
+    - jobs
+    - plugins/*/META-INF/MANIFEST.MF
+    - "?plugins/*.disabled"
+    - "?plugins/*.pinned"
+    - "?users"
+    - "?nodes"
+    - "?userContent"
+    - "?fingerprints"
+    - "?secret.key"
+    - "?identity.key.enc"
+    - "?jenkins.yaml"
+    - "?init.groovy.d"
+  exclude:
+    - secrets/master.key               # keep the key out; hold it yourself
+    - jobs/*/builds
+    - jobs/*/workspace*
+    - "*-atomic*tmp"
+    - indexing/*.log
+    - computation/*.log
+    - "*polling.log"
+  require: [config.xml, credentials.xml, secrets/hudson.util.Secret]
+  forbid: [secrets/master.key]
+
+env:
+  NOTIFY_ON: failure
+
+# Root, able to read every file whatever its owner, and nothing more.
+securityContext:
+  runAsUser: 0
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+    add: [DAC_READ_SEARCH]
