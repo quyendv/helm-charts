@@ -13,7 +13,7 @@ engine: postgresql
 ## Image reference: <registry>/<engine>:<tag>[-<variant>]
 ## @param image.registry Registry and path the per-engine images live under
 ## @param image.tag Image release tag (empty uses the chart appVersion)
-## @param image.variant Image variant appended to the tag: pg14..pg17 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite
+## @param image.variant Image variant appended to the tag: pg15..pg18 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite
 ## @param image.pullPolicy Image pull policy
 ##
 image:

@@ -265,6 +265,10 @@ FILES_ROOT for engine files: the claim's mount path, plus files.subPath.
     {{- end -}}
   {{- end -}}
 
+  {{- if and (eq .Values.engine "postgresql") (eq .Values.image.variant "pg14") (not .Values.image.tag) -}}
+    {{- fail "there is no pg14 image from platform-backup 0.8.0 on (PostgreSQL 14 is end of life): use image.variant pg15, which also backs up and restores a 14 server, or pin image.tag \"0.7.0\"" -}}
+  {{- end -}}
+
   {{- if and (eq .Values.engine "files") (not .Values.fileStore.enabled) -}}
     {{- fail "engine files needs fileStore: enable it with the claim that holds the directory (fileStore.claimName, fileStore.ownerSelector)" -}}
   {{- end -}}

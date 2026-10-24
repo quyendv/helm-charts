@@ -20,7 +20,7 @@ tests:
     asserts:
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
-          value: ghcr.io/quyendv/platform-backup/files:0.7.0
+          value: ghcr.io/quyendv/platform-backup/files:0.8.0
   - it: points FILES_ROOT at the mounted claim and passes the selection one entry per line
     asserts:
       - contains:

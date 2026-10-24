@@ -26,7 +26,7 @@ helm install my-release quyendv/<chart-name>
 | Chart | Description | Version |
 | ----- | ----------- | ------- |
 | [generic-app](./charts/generic-app) | A generic Helm chart that can be used for various applications | 2.0.0 |
-| [platform-backup](./charts/platform-backup) | A scheduled backup of one PostgreSQL, MongoDB, Redis or SQLite store, or a directory, to S3-compatible storage | 0.2.0 |
+| [platform-backup](./charts/platform-backup) | A scheduled backup of one PostgreSQL, MongoDB, Redis or SQLite store, or a directory, to S3-compatible storage | 0.3.0 |
 <!-- CHARTS_TABLE:END -->
 
 ## Development

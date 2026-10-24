@@ -54,13 +54,13 @@ backups.
 The image is `<image.registry>/<engine>:<image.tag>[-<image.variant>]`. `image.tag`
 defaults to the chart's `appVersion`. Pick the variant that matches the server:
 
-| `engine`     | `image.variant`             | Example image                                            |
-| ------------ | --------------------------- | -------------------------------------------------------- |
-| `postgresql` | `pg14`, `pg15`, `pg16`, `pg17` | `ghcr.io/quyendv/platform-backup/postgresql:0.7.0-pg17` |
-| `mongodb`    | *(empty)*                   | `ghcr.io/quyendv/platform-backup/mongodb:0.7.0`          |
-| `redis`      | `redis7`, `redis8`          | `ghcr.io/quyendv/platform-backup/redis:0.7.0-redis8`     |
-| `sqlite`     | *(empty)*                   | `ghcr.io/quyendv/platform-backup/sqlite:0.7.0`           |
-| `files`      | *(empty)*                   | `ghcr.io/quyendv/platform-backup/files:0.7.0`            |
+| `engine`     | `image.variant`                | Example image                                           |
+| ------------ | ------------------------------ | ------------------------------------------------------- |
+| `postgresql` | `pg15`, `pg16`, `pg17`, `pg18` | `ghcr.io/quyendv/platform-backup/postgresql:0.8.0-pg17` |
+| `mongodb`    | *(empty)*                      | `ghcr.io/quyendv/platform-backup/mongodb:0.8.0`         |
+| `redis`      | `redis7`, `redis8`             | `ghcr.io/quyendv/platform-backup/redis:0.8.0-redis8`    |
+| `sqlite`     | *(empty)*                      | `ghcr.io/quyendv/platform-backup/sqlite:0.8.0`          |
+| `files`      | *(empty)*                      | `ghcr.io/quyendv/platform-backup/files:0.8.0`           |
 
 ### Environment
 
@@ -191,7 +191,7 @@ dependencies:
 | `engine`            | Data store to back up: postgresql, mongodb, redis, sqlite or files (a directory). Selects the image                                                                         | `postgresql`                      |
 | `image.registry`    | Registry and path the per-engine images live under                                                                                                                          | `ghcr.io/quyendv/platform-backup` |
 | `image.tag`         | Image release tag (empty uses the chart appVersion)                                                                                                                         | `""`                              |
-| `image.variant`     | Image variant appended to the tag: pg14..pg17 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite                                                         | `""`                              |
+| `image.variant`     | Image variant appended to the tag: pg15..pg18 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite                                                         | `""`                              |
 | `image.pullPolicy`  | Image pull policy                                                                                                                                                           | `IfNotPresent`                    |
 | `nameOverride`      | String to partially override the chart name                                                                                                                                 | `""`                              |
 | `fullnameOverride`  | String to fully override the release fullname. The resulting name must contain "backup" and be at most 52 characters                                                        | `""`                              |
