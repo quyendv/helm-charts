@@ -5,6 +5,20 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-10-24
+
+### Changed
+
+- `appVersion` is 0.8.0, so the image tag defaults to platform-backup 0.8.0:
+  PostgreSQL images for 15-18 (pg14 dropped, PostgreSQL 14 being end of life
+  on 2026-11-12). `image.variant` takes `pg15` .. `pg18`; match it to the
+  server, for restore as much as for backup. Releases that set `image.tag` are
+  unaffected.
+- `engine: postgresql` with `image.variant: pg14` and no `image.tag` now fails
+  to render instead of pointing the CronJob at an image that does not exist.
+  Use `pg15`, which also backs up and restores a 14 server, or pin
+  `image.tag: "0.7.0"`.
+
 ## [0.2.0] - 2026-10-24
 
 ### Added

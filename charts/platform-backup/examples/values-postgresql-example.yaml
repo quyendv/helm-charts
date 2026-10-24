@@ -6,7 +6,7 @@
 
 engine: postgresql
 image:
-  variant: pg17          # match the server's major version: pg14 .. pg17
+  variant: pg17          # match the server's major version: pg15 .. pg18
 
 schedule: "0 */4 * * *"
 timeZone: UTC

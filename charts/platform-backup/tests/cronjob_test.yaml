@@ -17,7 +17,7 @@ tests:
     asserts:
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
-          value: ghcr.io/quyendv/platform-backup/postgresql:0.7.0
+          value: ghcr.io/quyendv/platform-backup/postgresql:0.8.0
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].imagePullPolicy
           value: IfNotPresent
@@ -27,7 +27,20 @@ tests:
     asserts:
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
-          value: ghcr.io/quyendv/platform-backup/postgresql:0.7.0-pg17
+          value: ghcr.io/quyendv/platform-backup/postgresql:0.8.0-pg17
+  - it: refuses pg14 on the default tag, which has no such image
+    set:
+      image.variant: pg14
+    asserts:
+      - failedTemplate:
+          errorPattern: "no pg14 image from platform-backup 0.8.0 on"
+  - it: still renders pg14 with a pinned tag that has one
+    set:
+      image: {tag: "0.7.0", variant: pg14}
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: ghcr.io/quyendv/platform-backup/postgresql:0.7.0-pg14
   - it: builds the image from engine, registry, tag and variant
     set:
       engine: redis
