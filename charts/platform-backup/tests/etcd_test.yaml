@@ -1,0 +1,41 @@
+suite: etcd engine
+templates:
+  - templates/cronjob.yaml
+set:
+  engine: etcd
+  schedule: "0 */6 * * *"
+  s3: {prefix: backups/etcd, keepRemote: 28, existingSecret: backup-s3}
+tests:
+  - it: renders the etcd image
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: ghcr.io/quyendv/platform-backup/etcd:0.8.0
+  - it: leaves host networking and DNS policy unset by default
+    asserts:
+      - notExists:
+          path: spec.jobTemplate.spec.template.spec.hostNetwork
+      - notExists:
+          path: spec.jobTemplate.spec.template.spec.dnsPolicy
+  - it: configures DNS for host networking
+    set:
+      hostNetwork: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.hostNetwork
+          value: true
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.dnsPolicy
+          value: ClusterFirstWithHostNet
+  - it: refuses restore in env
+    set:
+      env: {MODE: restore}
+    asserts:
+      - failedTemplate:
+          errorPattern: "etcd image backs up and fetches only"
+  - it: refuses restore in extraEnv
+    set:
+      extraEnv: [{name: MODE, value: restore}]
+    asserts:
+      - failedTemplate:
+          errorPattern: "etcd image backs up and fetches only"

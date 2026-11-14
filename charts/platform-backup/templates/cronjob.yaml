@@ -33,6 +33,10 @@ spec:
           {{- end }}
         spec:
           restartPolicy: Never
+          {{- if .Values.hostNetwork }}
+          hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
+          {{- end }}
           {{- with .Values.serviceAccountName }}
           serviceAccountName: {{ . }}
           {{- end }}

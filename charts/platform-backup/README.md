@@ -6,7 +6,7 @@ One release is one backup: install the chart once per database.
 
 ## Features
 
-- ✅ **PostgreSQL**, **MongoDB**, **Redis** and **SQLite**, one image per engine
+- ✅ **PostgreSQL**, **MongoDB**, **Redis**, **SQLite**, **etcd** and **files**, one image per engine
 - ✅ The image's environment contract as values: prefix, retention, read-back verification
 - ✅ S3 and data store credentials from **existing Secrets** or the **External Secrets Operator**
 - ✅ **File stores** (SQLite): mounts the application's volume and runs on its node
@@ -60,6 +60,7 @@ defaults to the chart's `appVersion`. Pick the variant that matches the server:
 | `mongodb`    | *(empty)*                      | `ghcr.io/quyendv/platform-backup/mongodb:0.8.0`         |
 | `redis`      | `redis7`, `redis8`             | `ghcr.io/quyendv/platform-backup/redis:0.8.0-redis8`    |
 | `sqlite`     | *(empty)*                      | `ghcr.io/quyendv/platform-backup/sqlite:0.8.0`          |
+| `etcd`       | *(empty)*                      | `ghcr.io/quyendv/platform-backup/etcd:0.8.0`            |
 | `files`      | *(empty)*                      | `ghcr.io/quyendv/platform-backup/files:0.8.0`           |
 
 ### Environment
@@ -89,6 +90,13 @@ with only `DAC_READ_SEARCH`, as
 [examples/values-files-example.yaml](examples/values-files-example.yaml) does. The
 selection rules, and a tested Jenkins selection with a restore drill, are in the files
 backend's README in the platform-backup repository. Requires image 0.7.0 or later.
+
+**Engine `etcd`** snapshots a control-plane member. Set `ETCD_MODE` to `kubeadm`,
+`kubespray`, or `explicit` and supply the corresponding certificates and endpoint;
+the examples use a node address reachable from the pod. The process needs root to
+read the client key. If etcd listens only on loopback, enable `hostNetwork` and use
+a loopback endpoint instead. The image backs up and fetches only; restore requires
+rebuilding stopped members as described in the [etcd backend documentation](https://github.com/quyendv/platform-backup/tree/main/backends/etcd).
 
 **Retention is a count of runs, not days.** `s3.keepRemote: 0` disables pruning: it keeps
 every run, it never means "keep none". The retention window is `keepRemote` × the schedule
@@ -188,10 +196,10 @@ dependencies:
 
 | Name                | Description                                                                                                                                                                 | Value                             |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `engine`            | Data store to back up: postgresql, mongodb, redis, sqlite or files (a directory). Selects the image                                                                         | `postgresql`                      |
+| `engine`            | Data store to back up: postgresql, mongodb, redis, sqlite, etcd or files (a directory). Selects the image                                                                   | `postgresql`                      |
 | `image.registry`    | Registry and path the per-engine images live under                                                                                                                          | `ghcr.io/quyendv/platform-backup` |
 | `image.tag`         | Image release tag (empty uses the chart appVersion)                                                                                                                         | `""`                              |
-| `image.variant`     | Image variant appended to the tag: pg15..pg18 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite                                                         | `""`                              |
+| `image.variant`     | Image variant appended to the tag: pg15..pg18 for postgresql, redis7/redis8 for redis; empty for mongodb, sqlite, etcd and files                                            | `""`                              |
 | `image.pullPolicy`  | Image pull policy                                                                                                                                                           | `IfNotPresent`                    |
 | `nameOverride`      | String to partially override the chart name                                                                                                                                 | `""`                              |
 | `fullnameOverride`  | String to fully override the release fullname. The resulting name must contain "backup" and be at most 52 characters                                                        | `""`                              |
@@ -274,6 +282,7 @@ dependencies:
 | `imagePullSecrets`             | Names of Secrets used to pull the image                                                          | `[]`    |
 | `serviceAccountName`           | ServiceAccount the pods run as (empty uses the namespace default)                                | `""`    |
 | `automountServiceAccountToken` | Mount the ServiceAccount token in the pods                                                       | `false` |
+| `hostNetwork`                  | Use the node network; sets dnsPolicy to ClusterFirstWithHostNet                                  | `false` |
 | `nodeSelector`                 | Node labels for pod assignment                                                                   | `{}`    |
 | `tolerations`                  | Tolerations for pod assignment                                                                   | `[]`    |
 | `affinity`                     | Affinity for pod assignment. With fileStore enabled, the owner's podAffinity term is added to it | `{}`    |
@@ -286,6 +295,7 @@ dependencies:
 
 - [`examples/values-postgresql-example.yaml`](examples/values-postgresql-example.yaml): PostgreSQL every four hours, both Secrets from the External Secrets Operator
 - [`examples/values-sqlite-example.yaml`](examples/values-sqlite-example.yaml): SQLite on an application's volume
+- [`examples/etcd-kubespray.yaml`](examples/etcd-kubespray.yaml) and [`examples/etcd-kubeadm.yaml`](examples/etcd-kubeadm.yaml): etcd snapshots every six hours
 - [`ci/`](ci/): one fixture per engine, rendered and validated in CI
 
 ```bash

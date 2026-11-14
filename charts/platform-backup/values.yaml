@@ -6,14 +6,14 @@
 
 ## @section Backup parameters
 
-## @param engine Data store to back up: postgresql, mongodb, redis, sqlite or files (a directory). Selects the image
+## @param engine Data store to back up: postgresql, mongodb, redis, sqlite, etcd or files (a directory). Selects the image
 ##
 engine: postgresql
 
 ## Image reference: <registry>/<engine>:<tag>[-<variant>]
 ## @param image.registry Registry and path the per-engine images live under
 ## @param image.tag Image release tag (empty uses the chart appVersion)
-## @param image.variant Image variant appended to the tag: pg15..pg18 for postgresql, redis7/redis8 for redis; empty for mongodb and sqlite
+## @param image.variant Image variant appended to the tag: pg15..pg18 for postgresql, redis7/redis8 for redis; empty for mongodb, sqlite, etcd and files
 ## @param image.pullPolicy Image pull policy
 ##
 image:
@@ -230,6 +230,9 @@ serviceAccountName: ""
 ## @param automountServiceAccountToken Mount the ServiceAccount token in the pods
 ##
 automountServiceAccountToken: false
+## @param hostNetwork Use the node network; sets dnsPolicy to ClusterFirstWithHostNet
+##
+hostNetwork: false
 ## @param nodeSelector Node labels for pod assignment
 ##
 nodeSelector: {}

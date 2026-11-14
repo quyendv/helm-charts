@@ -19,7 +19,8 @@
         "mongodb",
         "redis",
         "sqlite",
-        "files"
+        "files",
+        "etcd"
       ]
     },
     "image": {
@@ -431,6 +432,10 @@
           "description": "FILES_FORBID patterns"
         }
       }
+    },
+    "hostNetwork": {
+      "description": "Use the node network and ClusterFirstWithHostNet DNS",
+      "type": "boolean"
     }
   }
 }
