@@ -5,6 +5,15 @@ All notable changes to this chart will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-11-14
+
+### Added
+
+- Support the etcd image with kubeadm and Kubespray examples, including
+  control-plane scheduling and read-only host certificate mounts.
+- `hostNetwork` enables host networking with `ClusterFirstWithHostNet` DNS.
+- Reject etcd restore mode: the image backs up and fetches only.
+
 ## [0.3.0] - 2026-10-24
 
 ### Changed

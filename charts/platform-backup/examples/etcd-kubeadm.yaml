@@ -1,0 +1,27 @@
+# Replace the endpoint with a node address reachable from the pod and present in the certificate.
+engine: etcd
+schedule: "0 */6 * * *"
+s3:
+  prefix: backups/etcd
+  keepRemote: 28
+  existingSecret: backup-s3
+env:
+  ETCD_MODE: kubeadm
+  ETCDCTL_ENDPOINTS: https://10.0.0.10:2379
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+securityContext:
+  runAsUser: 0
+extraVolumes:
+  - name: etcd-pki
+    hostPath:
+      path: /etc/kubernetes/pki/etcd
+      type: Directory
+extraVolumeMounts:
+  - name: etcd-pki
+    mountPath: /etc/kubernetes/pki/etcd
+    readOnly: true

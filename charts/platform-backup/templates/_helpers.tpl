@@ -273,6 +273,17 @@ FILES_ROOT for engine files: the claim's mount path, plus files.subPath.
     {{- fail "engine files needs fileStore: enable it with the claim that holds the directory (fileStore.claimName, fileStore.ownerSelector)" -}}
   {{- end -}}
 
+  {{- if eq .Values.engine "etcd" -}}
+    {{- if eq (get (.Values.env | default dict) "MODE" | toString) "restore" -}}
+      {{- fail "the etcd image backs up and fetches only; MODE=restore is not supported" -}}
+    {{- end -}}
+    {{- range (.Values.extraEnv | default list) -}}
+      {{- if and (eq .name "MODE") (eq (get . "value" | toString) "restore") -}}
+        {{- fail "the etcd image backs up and fetches only; MODE=restore is not supported" -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- $managed := list "MODE" "S3_PREFIX" "KEEP_LOCAL" "KEEP_REMOTE" "VERIFY_READBACK" "BACKUP_HOST" -}}
   {{- if eq .Values.engine "files" -}}
     {{- $managed = concat $managed (list "FILES_ROOT" "FILES_INCLUDE" "FILES_EXCLUDE" "FILES_REQUIRE" "FILES_FORBID") -}}

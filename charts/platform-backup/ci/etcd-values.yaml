@@ -1,0 +1,9 @@
+engine: etcd
+schedule: "0 */6 * * *"
+s3:
+  prefix: backups/etcd
+  keepRemote: 28
+  existingSecret: backup-s3
+hostNetwork: true
+env:
+  ETCD_MODE: kubeadm
